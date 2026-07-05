@@ -1,11 +1,19 @@
-import { requireNativeModule } from 'expo-modules-core';
+import { requireOptionalNativeModule } from 'expo-modules-core';
 
 type WinTrackWidgetBridgeModule = {
   reloadAllTimelines: () => Promise<void>;
 };
 
-const nativeModule = requireNativeModule<WinTrackWidgetBridgeModule>('WinTrackWidgetBridge');
+let nativeModule: WinTrackWidgetBridgeModule | null | undefined;
+
+function getNativeModule() {
+  if (nativeModule !== undefined) {
+    return nativeModule;
+  }
+  nativeModule = requireOptionalNativeModule<WinTrackWidgetBridgeModule>('WinTrackWidgetBridge');
+  return nativeModule;
+}
 
 export async function reloadAllWidgetTimelines() {
-  await nativeModule.reloadAllTimelines();
+  await getNativeModule()?.reloadAllTimelines();
 }

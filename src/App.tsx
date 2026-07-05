@@ -89,6 +89,7 @@ function Root() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorMode | null>(null);
   const [slotEditor, setSlotEditor] = useState<WidgetSlotId | null>(null);
+  const [startupError, setStartupError] = useState<string | null>(null);
 
   const selectedCounter = counters.find((counter) => counter.id === detailId) ?? null;
   const archivedCounters = allCounters.filter((counter) => counter.isArchived);
@@ -114,11 +115,32 @@ function Root() {
   useEffect(() => {
     let cancelled = false;
     async function boot() {
-      await initializeStore();
-      await reconcileWidgetEvents();
-      if (!cancelled) {
+      try {
+        await initializeStore();
+      } catch (error) {
+        console.warn('Failed to initialize store', error);
+        if (!cancelled) {
+          setStartupError('データベースの準備に失敗しました。アプリを再起動してください。');
+          setReady(true);
+        }
+        return;
+      }
+      try {
+        await reconcileWidgetEvents();
+      } catch (error) {
+        console.warn('Failed to reconcile widget events', error);
+      }
+      try {
         await loadData(null);
-        setReady(true);
+      } catch (error) {
+        console.warn('Failed to load initial data', error);
+        if (!cancelled) {
+          setStartupError('データの読み込みに失敗しました。アプリを再起動してください。');
+        }
+      } finally {
+        if (!cancelled) {
+          setReady(true);
+        }
       }
     }
     void boot();
@@ -136,7 +158,10 @@ function Root() {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void reconcileWidgetEvents().then(load);
+        void reconcileWidgetEvents()
+          .catch((error) => console.warn('Failed to reconcile widget events', error))
+          .then(load)
+          .catch((error) => console.warn('Failed to reload app data', error));
       }
     });
     return () => subscription.remove();
@@ -215,6 +240,18 @@ function Root() {
         <View style={styles.loadingWrap}>
           <Text style={[styles.loadingTitle, { color: theme.colors.text }]}>勝率カウンター</Text>
           <Text style={[styles.loadingText, { color: theme.colors.muted }]}>準備中</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (startupError) {
+    return (
+      <SafeAreaView style={[styles.root, { backgroundColor: theme.colors.background }]}>
+        <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+        <View style={styles.emptyWrap}>
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>起動に失敗しました</Text>
+          <Text style={[styles.emptyText, { color: theme.colors.muted }]}>{startupError}</Text>
         </View>
       </SafeAreaView>
     );

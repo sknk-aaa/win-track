@@ -150,7 +150,7 @@ async function writeJson(fileName: string, value: unknown) {
 }
 
 function getSharedFileUri(fileName: string) {
-  const container = Paths.appleSharedContainers[appGroupIdentifier];
+  const container = Paths.appleSharedContainers?.[appGroupIdentifier];
   const baseUri = container?.uri;
   if (!baseUri) {
     return null;
