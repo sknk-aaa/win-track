@@ -4,11 +4,13 @@
 
 - iOSアプリ。
 - Expo SDK 54 + React Native + TypeScript。
+- Expo Configは `app.config.js` を正とする。`app.json` は使わない。
 - iOS WidgetKit拡張を使う。
 - ウィジェット拡張は `@bacons/apple-targets` でCNG生成する。
 - アプリ/ウィジェット間の共有は App Group のJSONファイルで行う。
 - GitHub Actionsによるビルド/配信は親プロジェクトの共通docに従う。
 - GitHub Actionsはfastlane matchでアプリ本体とWidget拡張のApp Store用Profileを管理する。
+- `@expo/vector-icons` を使うため、SDK54用の `expo-font@14.0.12` を明示依存に入れる。これを外すとTestFlight単体アプリで白画面になる可能性がある。
 
 ## 識別子
 
@@ -41,3 +43,9 @@ GitHub Actions Secrets:
 5. TestFlightでWidgetKit拡張とApp Groupの即時反映を実機確認する。
 
 詳細な汎用手順は親プロジェクトのiOS CI/CD手順を参照する。
+
+## TestFlight確認
+
+- 白画面対策後の確認では、最新コミットをpushして `iOS TestFlight` を再実行する。
+- `npx expo-doctor` はネットワーク起因のExpo API / React Native Directory接続失敗を除き、依存・設定エラーがない状態にする。
+- 再度白画面が出る場合は、依存推測ではなくGitHub ActionsログとTestFlight/端末クラッシュログを確認する。

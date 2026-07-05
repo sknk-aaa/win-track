@@ -4,7 +4,9 @@
 
 - Expo + React Native + TypeScriptでMVP実装を追加。
 - SQLite保存、写真登録、履歴、アーカイブ、設定、ウィジェット枠、Swift WidgetKit連携を実装。
-- アプリアイコンを設定済み。
+- アプリアイコンは `assets/icon1.png` を使用。
+- Expo Configは `app.config.js` に一本化済み。`app.json` は削除済み。
+- TestFlight起動時の白画面対策として、`expo-font@14.0.12` を明示依存に追加し、`@expo/vector-icons` のNative Module/Font依存重複を解消済み。
 - 型チェック、SDK依存チェック、iOS export、clean prebuild、autolinking、npm auditを確認済み。
 - GitHub Actions / fastlane matchによるTestFlight配信設定を追加。
 - アプリ名は「勝率カウンター」。
@@ -33,10 +35,10 @@
 
 ## 次タスク
 
-1. Actionsの `iOS Certificates (one-time setup)` を初回1回実行する。
-2. Actionsの `iOS TestFlight` を実行する。
-3. TestFlightビルドでWidgetKit拡張とApp Groupを実機確認する。
-4. 実機でホーム画面/ロック画面ウィジェットの即時反映を確認する。
+1. 最新コミットをpushして、Actionsの `iOS TestFlight` を再実行する。
+2. TestFlightで白画面が解消してアプリが起動するか確認する。
+3. 起動確認後、WidgetKit拡張とApp Groupの即時反映を実機確認する。
+4. 実機でホーム画面/ロック画面ウィジェットの記録導線を確認する。
 5. ストアスクリーンショットを作成する。
 
 ## 既知の注意点
@@ -44,3 +46,5 @@
 - ウィジェットからの記録は、共有ストレージ更新とWidgetKit再読み込みの体感速度が品質を左右する。
 - レイアウト寸法は実装後に実機確認で調整する。
 - `APPLE_TEAM_ID` はGitHub Secretsから `app.config.js` 経由でExpo Configへ注入する。
+- TestFlightで再度白画面が出る場合は、次は推測修正ではなくGitHub ActionsのビルドログとTestFlight/端末クラッシュログを確認する。
+- `assets/icon2.png`、`assets/icon3.png`、`assets/icon4.png` は未採用の候補素材。現時点では未追跡のまま。
