@@ -1,0 +1,44 @@
+name: iOS Certificates (one-time setup)
+on:
+  workflow_dispatch:
+jobs:
+  certs:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      APP_IDENTIFIER: com.sknkaaa.wintrack
+      WIDGET_IDENTIFIER: com.sknkaaa.wintrack.widgets
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+      - name: Prepare ASC API key
+        run: |
+          KEYFILE="$RUNNER_TEMP/asc_api_key.p8"
+          if printf '%s' "$APP_STORE_CONNECT_API_KEY" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s\n' "$APP_STORE_CONNECT_API_KEY" > "$KEYFILE"
+          else
+            printf '%s' "$APP_STORE_CONNECT_API_KEY" | base64 --decode > "$KEYFILE"
+          fi
+          echo "ASC_API_KEY_PATH=$KEYFILE" >> "$GITHUB_ENV"
+          if openssl pkey -in "$KEYFILE" -noout; then echo "KEY OK"; else echo "KEY INVALID"; exit 1; fi
+      - name: Verify match git access
+        run: |
+          CLEAN=$(printf '%s' "$MATCH_GIT_BASIC_AUTHORIZATION" | tr -d '\r\n ')
+          echo "::add-mask::$CLEAN"
+          echo "MATCH_GIT_BASIC_AUTHORIZATION=$CLEAN" >> "$GITHUB_ENV"
+          set +e
+          OUT=$(cd "$RUNNER_TEMP" && git -c credential.helper= -c http.extraheader="Authorization: Basic $CLEAN" ls-remote "$MATCH_GIT_URL" 2>&1); CODE=$?
+          echo "$OUT" | head -3
+          if [ $CODE -eq 0 ]; then echo "GIT AUTH OK"; else echo "GIT AUTH FAILED (exit $CODE)"; exit 1; fi
+      - name: Create & store certificates
+        run: bundle exec fastlane ios certs
