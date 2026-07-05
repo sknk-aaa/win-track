@@ -9,9 +9,10 @@
 
 ## 未設定
 
-- bundle identifier
+- bundle identifier: `com.sknkaaa.wintrack`
+- widget bundle identifier: `com.sknkaaa.wintrack.widgets`
+- App Group identifier: `group.com.sknkaaa.wintrack`
 - Apple Team ID
-- App Group identifier
 - GitHub Actions workflow
 - fastlane match設定
 - Secrets
