@@ -186,6 +186,13 @@ export async function recordWidgetEvent(
 
 async function insertRecord(id: string, counterId: string, result: MatchResult, createdAt: string) {
   const db = await getDb();
+  const counter = await db.getFirstAsync<{ id: string }>(
+    'SELECT id FROM counters WHERE id = ? AND isArchived = 0',
+    counterId
+  );
+  if (!counter) {
+    return;
+  }
   await db.runAsync(
     'INSERT OR IGNORE INTO match_records (id, counterId, result, createdAt) VALUES (?, ?, ?, ?)',
     id,

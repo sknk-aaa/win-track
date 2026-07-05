@@ -65,6 +65,7 @@ const slotDisplayNames: Record<WidgetSlotId, string> = {
   slot2: '枠2',
   slot3: '枠3'
 };
+const photoDirectoryName = 'counter-photos';
 
 export default function App() {
   return (
@@ -83,6 +84,7 @@ function Root() {
   const [allCounters, setAllCounters] = useState<CounterSummary[]>([]);
   const [history, setHistory] = useState<MatchRecord[]>([]);
   const [historyFilter, setHistoryFilter] = useState<string | null>(null);
+  const [detailRecords, setDetailRecords] = useState<MatchRecord[]>([]);
   const [slots, setSlots] = useState<WidgetSlot[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorMode | null>(null);
@@ -92,18 +94,22 @@ function Root() {
   const archivedCounters = allCounters.filter((counter) => counter.isArchived);
   const totals = useMemo(() => summarizeTopLine(counters), [counters]);
 
-  const load = useCallback(async () => {
+  const loadData = useCallback(async (filterCounterId: string | null) => {
     const [active, all, records, widgetSlots] = await Promise.all([
       listCounters(),
       listCounters({ includeArchived: true }),
-      listHistory(historyFilter),
+      listHistory(filterCounterId),
       listWidgetSlots()
     ]);
     setCounters(active);
     setAllCounters(all);
     setHistory(records);
     setSlots(widgetSlots);
-  }, [historyFilter]);
+  }, []);
+
+  const load = useCallback(async () => {
+    await loadData(historyFilter);
+  }, [historyFilter, loadData]);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,7 +117,7 @@ function Root() {
       await initializeStore();
       await reconcileWidgetEvents();
       if (!cancelled) {
-        await load();
+        await loadData(null);
         setReady(true);
       }
     }
@@ -119,7 +125,13 @@ function Root() {
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, [loadData]);
+
+  useEffect(() => {
+    if (ready) {
+      void load();
+    }
+  }, [historyFilter, load, ready]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
@@ -135,6 +147,24 @@ function Root() {
       setEditor({ type: 'create' });
     }
   }, [allCounters.length, counters.length, ready]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDetailRecords() {
+      if (!detailId) {
+        setDetailRecords([]);
+        return;
+      }
+      const records = await listHistory(detailId);
+      if (!cancelled) {
+        setDetailRecords(records.slice(0, 6));
+      }
+    }
+    void loadDetailRecords();
+    return () => {
+      cancelled = true;
+    };
+  }, [detailId, selectedCounter?.lastRecordedAt, selectedCounter?.wins, selectedCounter?.losses]);
 
   const refreshAfterMutation = useCallback(async () => {
     await load();
@@ -159,6 +189,9 @@ function Root() {
         await createCounter(name, storedPhotoUri);
       } else {
         await updateCounter(mode.counter.id, name, storedPhotoUri);
+        if (mode.counter.photoUri !== storedPhotoUri) {
+          await deleteStoredPhoto(mode.counter.photoUri);
+        }
       }
       setEditor(null);
       await refreshAfterMutation();
@@ -251,7 +284,11 @@ function Root() {
               {
                 text: '完全削除',
                 style: 'destructive',
-                onPress: () => void deleteCounterPermanently(counter.id).then(refreshAfterMutation)
+                onPress: () => {
+                  void deleteCounterPermanently(counter.id)
+                    .then(() => deleteStoredPhoto(counter.photoUri))
+                    .then(refreshAfterMutation);
+                }
               }
             ]);
           }}
@@ -261,7 +298,11 @@ function Root() {
               {
                 text: '全削除',
                 style: 'destructive',
-                onPress: () => void resetAllData().then(refreshAfterMutation)
+                onPress: () => {
+                  void resetAllData()
+                    .then(deletePhotoDirectory)
+                    .then(refreshAfterMutation);
+                }
               }
             ]);
           }}
@@ -273,7 +314,7 @@ function Root() {
       {selectedCounter ? (
         <CounterDetail
           counter={selectedCounter}
-          records={history.filter((record) => record.counterId === selectedCounter.id).slice(0, 6)}
+          records={detailRecords}
           theme={theme}
           onClose={() => setDetailId(null)}
           onRecord={handleRecord}
@@ -508,6 +549,11 @@ function SettingsScreen({
 
       <SectionTitle title="データ" theme={theme} />
       <DangerButton label="すべてのデータを削除" theme={theme} onPress={onResetAll} />
+
+      <SectionTitle title="アプリ情報" theme={theme} />
+      <Text style={[styles.note, { color: theme.colors.muted }]}>
+        勝率カウンター 0.1.0 / データはこの端末内だけに保存されます。
+      </Text>
     </ScrollView>
   );
 }
@@ -808,8 +854,7 @@ function HistoryRow({
 }) {
   const isWin = record.result === 'win';
   return (
-    <Pressable
-      onLongPress={onDelete}
+    <View
       style={[
         styles.historyRow,
         {
@@ -833,8 +878,17 @@ function HistoryRow({
           {compact ? formatShortDate(record.createdAt) : formatFullDate(record.createdAt)}
         </Text>
       </View>
-      {onDelete ? <Ionicons name="trash-outline" size={19} color={theme.colors.muted} /> : null}
-    </Pressable>
+      {onDelete ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="履歴を削除"
+          hitSlop={8}
+          onPress={onDelete}
+          style={styles.historyDeleteButton}>
+          <Ionicons name="trash-outline" size={20} color={theme.colors.muted} />
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -1038,16 +1092,48 @@ function SmallTextButton({
 }
 
 async function persistPhoto(uri: string) {
-  const documentDirectory = FileSystem.documentDirectory;
-  if (!documentDirectory || uri.startsWith(`${documentDirectory}counter-photos/`)) {
+  const directory = getPhotoDirectory();
+  if (!directory || isStoredPhotoUri(uri)) {
     return uri;
   }
-  const directory = `${documentDirectory}counter-photos/`;
   await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
   const extension = uri.split('.').pop()?.split('?')[0] ?? 'jpg';
   const target = `${directory}${Date.now().toString(36)}.${extension}`;
   await FileSystem.copyAsync({ from: uri, to: target });
   return target;
+}
+
+function getPhotoDirectory() {
+  const documentDirectory = FileSystem.documentDirectory;
+  return documentDirectory ? `${documentDirectory}${photoDirectoryName}/` : null;
+}
+
+function isStoredPhotoUri(uri: string | null) {
+  const directory = getPhotoDirectory();
+  return !!directory && !!uri && uri.startsWith(directory);
+}
+
+async function deleteStoredPhoto(uri: string | null) {
+  if (!isStoredPhotoUri(uri) || !uri) {
+    return;
+  }
+  try {
+    await FileSystem.deleteAsync(uri, { idempotent: true });
+  } catch (error) {
+    console.warn('Failed to delete counter photo', error);
+  }
+}
+
+async function deletePhotoDirectory() {
+  const directory = getPhotoDirectory();
+  if (!directory) {
+    return;
+  }
+  try {
+    await FileSystem.deleteAsync(directory, { idempotent: true });
+  } catch (error) {
+    console.warn('Failed to delete counter photos', error);
+  }
 }
 
 const styles = StyleSheet.create({
@@ -1221,6 +1307,12 @@ const styles = StyleSheet.create({
   historyTextArea: {
     flex: 1,
     minWidth: 0
+  },
+  historyDeleteButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   historyName: {
     fontSize: 16,

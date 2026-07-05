@@ -4,6 +4,8 @@
 
 - Expo + React Native + TypeScriptでMVP実装を追加。
 - SQLite保存、写真登録、履歴、アーカイブ、設定、ウィジェット枠、Swift WidgetKit連携を実装。
+- アプリアイコンを設定済み。
+- 型チェック、SDK依存チェック、iOS export、clean prebuild、autolinking、npm auditを確認済み。
 - アプリ名は「勝率カウンター」。
 - 海外向け展開は後回し。
 
@@ -31,11 +33,13 @@
 ## 次タスク
 
 1. GitHub Actions設定を親プロジェクトdocに沿って追加する。
-2. TestFlightビルドでWidgetKit拡張とApp Groupを実機確認する。
-3. 実機でホーム画面/ロック画面ウィジェットの即時反映を確認する。
-4. ストア素材、アイコン、スクリーンショットを作成する。
+2. Apple Team IDをCI/運用方針に沿って設定する。
+3. TestFlightビルドでWidgetKit拡張とApp Groupを実機確認する。
+4. 実機でホーム画面/ロック画面ウィジェットの即時反映を確認する。
+5. ストアスクリーンショットを作成する。
 
 ## 既知の注意点
 
 - ウィジェットからの記録は、共有ストレージ更新とWidgetKit再読み込みの体感速度が品質を左右する。
 - レイアウト寸法は実装後に実機確認で調整する。
+- `@bacons/apple-targets` は `ios.appleTeamId` 未設定だとprebuild/export時に警告を出す。
