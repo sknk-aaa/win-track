@@ -13,6 +13,12 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.sknkaaa.wintrack",
+      "deploymentTarget": "17.0",
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.sknkaaa.wintrack"
+        ]
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "カウンター写真を撮影するためにカメラを使用します。",
         "NSPhotoLibraryUsageDescription": "カウンター写真を選択するために写真ライブラリを使用します。"
@@ -26,52 +32,7 @@
           "cameraPermission": "カウンター写真を撮影するためにカメラを使用します。"
         }
       ],
-      [
-        "expo-widgets",
-        {
-          "bundleIdentifier": "com.sknkaaa.wintrack.widgets",
-          "groupIdentifier": "group.com.sknkaaa.wintrack",
-          "widgets": [
-            {
-              "name": "WinRateWidget",
-              "displayName": "勝率カウンター",
-              "description": "勝ち負けをすぐに記録します。",
-              "ios": {
-                "supportedFamilies": [
-                  "systemSmall",
-                  "systemMedium",
-                  "accessoryRectangular"
-                ],
-                "configuration": {
-                  "title": "表示するカウンター",
-                  "description": "アプリ内で割り当てたウィジェット枠を選びます。",
-                  "parameters": {
-                    "slotId": {
-                      "title": "ウィジェット枠",
-                      "type": "enum",
-                      "values": [
-                        {
-                          "name": "枠1",
-                          "value": "slot1"
-                        },
-                        {
-                          "name": "枠2",
-                          "value": "slot2"
-                        },
-                        {
-                          "name": "枠3",
-                          "value": "slot3"
-                        }
-                      ],
-                      "default": "slot1"
-                    }
-                  }
-                }
-              }
-            }
-          ]
-        }
-      ]
+      "@bacons/apple-targets"
     ]
   }
 }

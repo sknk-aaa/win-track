@@ -3,7 +3,7 @@
 ## 現状
 
 - Expo + React Native + TypeScriptでMVP実装を追加。
-- SQLite保存、写真登録、履歴、アーカイブ、設定、ウィジェット枠、`expo-widgets` のWidgetKit連携を実装。
+- SQLite保存、写真登録、履歴、アーカイブ、設定、ウィジェット枠、Swift WidgetKit連携を実装。
 - アプリ名は「勝率カウンター」。
 - 海外向け展開は後回し。
 
@@ -24,6 +24,7 @@
 - ロック画面ウィジェットはrectangular。
 - ウィジェットには写真を出さない。
 - ウィジェットはアプリ内の枠1〜3にカウンターを割り当て、ウィジェット設定で枠を選ぶ。
+- SDK 54固定のため、`expo-widgets` は使わず、`@bacons/apple-targets` + Swift WidgetKit + App Group共有JSONで実装。
 - ウィジェット記録後の即時反映は最重要仕様。
 - ライト/ダーク両対応。
 

@@ -2,8 +2,12 @@ node_modules/
 .expo/
 dist/
 web-build/
-ios/
-android/
+/ios/
+/android/
+targets/*/Info.plist
+targets/*/generated.entitlements
+targets/*/Assets.xcassets/
+targets/*/gen-image/
 *.log
 .env
 .env.*

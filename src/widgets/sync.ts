@@ -1,4 +1,7 @@
-import WinRateWidget from './WinRateWidget';
+import { Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+
+import { reloadAllWidgetTimelines } from '../native/WinTrackWidgetBridge';
 import { formatWinRate } from '../lib/format';
 import {
   listCounters,
@@ -14,6 +17,10 @@ import type {
   WinRateWidgetProps
 } from '../types';
 
+const appGroupIdentifier = 'group.com.sknkaaa.wintrack';
+const snapshotFileName = 'widget-snapshot.json';
+const eventsFileName = 'widget-events.json';
+
 const slotLabels: Record<WidgetSlotId, string> = {
   'slot1': '枠1',
   'slot2': '枠2',
@@ -25,38 +32,34 @@ export async function reconcileWidgetEvents() {
   for (const event of pendingEvents) {
     await recordWidgetEvent(event.id, event.counterId, event.result, event.createdAt);
   }
+  if (pendingEvents.length > 0) {
+    await writeJson(eventsFileName, []);
+  }
   await publishWidgetSnapshot([]);
 }
 
 export async function publishWidgetSnapshot(pendingEvents: WidgetPendingEvent[] = []) {
   const [counters, slots] = await Promise.all([listCounters(), listWidgetSlots()]);
+  const snapshot: WinRateWidgetProps = {
+    slots: slots.map((slot) => toSnapshot(slot, counters, pendingEvents)),
+    updatedAt: new Date().toISOString()
+  };
   try {
-    WinRateWidget.updateSnapshot({
-      slots: slots.map((slot) => toSnapshot(slot, counters, pendingEvents)),
-      updatedAt: new Date().toISOString()
-    });
+    await writeJson(snapshotFileName, snapshot);
+    await reloadAllWidgetTimelines();
   } catch (error) {
     console.warn('Failed to update widget snapshot', error);
   }
 }
 
 async function readPendingWidgetEvents() {
-  let timeline: Awaited<ReturnType<typeof WinRateWidget.getTimeline>>;
   try {
-    timeline = await WinRateWidget.getTimeline();
+    const events = await readJson<WidgetPendingEvent[]>(eventsFileName);
+    return dedupeEvents(events ?? []);
   } catch (error) {
-    console.warn('Failed to read widget timeline', error);
+    console.warn('Failed to read widget events', error);
     return [];
   }
-  const events = new Map<string, WidgetPendingEvent>();
-  for (const entry of timeline) {
-    for (const slot of entry.props.slots) {
-      for (const event of slot.pendingEvents) {
-        events.set(event.id, event);
-      }
-    }
-  }
-  return [...events.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
 function toSnapshot(
@@ -99,4 +102,58 @@ function toSnapshot(
     isAvailable: true,
     pendingEvents: slotPending
   };
+}
+
+function dedupeEvents(events: WidgetPendingEvent[]) {
+  const deduped = new Map<string, WidgetPendingEvent>();
+  for (const event of events) {
+    if (isWidgetPendingEvent(event)) {
+      deduped.set(event.id, event);
+    }
+  }
+  return [...deduped.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+function isWidgetPendingEvent(value: unknown): value is WidgetPendingEvent {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const candidate = value as Partial<WidgetPendingEvent>;
+  return (
+    typeof candidate.id === 'string' &&
+    (candidate.slotId === 'slot1' || candidate.slotId === 'slot2' || candidate.slotId === 'slot3') &&
+    typeof candidate.counterId === 'string' &&
+    (candidate.result === 'win' || candidate.result === 'loss') &&
+    typeof candidate.createdAt === 'string'
+  );
+}
+
+async function readJson<T>(fileName: string) {
+  const uri = getSharedFileUri(fileName);
+  if (!uri) {
+    return null;
+  }
+  const info = await FileSystem.getInfoAsync(uri);
+  if (!info.exists) {
+    return null;
+  }
+  const raw = await FileSystem.readAsStringAsync(uri);
+  return JSON.parse(raw) as T;
+}
+
+async function writeJson(fileName: string, value: unknown) {
+  const uri = getSharedFileUri(fileName);
+  if (!uri) {
+    return;
+  }
+  await FileSystem.writeAsStringAsync(uri, JSON.stringify(value));
+}
+
+function getSharedFileUri(fileName: string) {
+  const container = Paths.appleSharedContainers[appGroupIdentifier];
+  const baseUri = container?.uri;
+  if (!baseUri) {
+    return null;
+  }
+  return `${baseUri.endsWith('/') ? baseUri : `${baseUri}/`}${fileName}`;
 }
