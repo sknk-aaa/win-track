@@ -30,10 +30,17 @@ export async function reconcileWidgetEvents() {
   for (const event of pendingEvents) {
     await recordWidgetEvent(event.id, event.counterId, event.result, event.createdAt);
   }
+  let didClearEvents = true;
   if (pendingEvents.length > 0) {
-    await clearWidgetEventsPayload();
+    try {
+      await clearWidgetEventsPayload();
+    } catch (error) {
+      didClearEvents = false;
+      console.warn('Failed to clear widget events', error);
+    }
   }
-  await publishWidgetSnapshot([]);
+  const didPublishSnapshot = await publishWidgetSnapshot([]);
+  return didClearEvents && didPublishSnapshot;
 }
 
 export async function publishWidgetSnapshot(pendingEvents: WidgetPendingEvent[] = []) {

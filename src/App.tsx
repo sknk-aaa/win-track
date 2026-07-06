@@ -3,7 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import {
   Alert,
   AppState,
@@ -120,6 +120,7 @@ function Root() {
   const [selectedAppIcon, setSelectedAppIcon] = useState<AppIconSelection>('primary');
   const [isApplyingAppIcon, setIsApplyingAppIcon] = useState(false);
   const [startupError, setStartupError] = useState<string | null>(null);
+  const didShowWidgetSyncErrorRef = useRef(false);
 
   const selectedCounter = counters.find((counter) => counter.id === detailId) ?? null;
   const archivedCounters = allCounters.filter((counter) => counter.isArchived);
@@ -153,6 +154,17 @@ function Root() {
     await loadData(historyFilter);
   }, [historyFilter, loadData]);
 
+  const showWidgetSyncError = useCallback(() => {
+    if (didShowWidgetSyncErrorRef.current) {
+      return;
+    }
+    didShowWidgetSyncErrorRef.current = true;
+    Alert.alert(
+      'ウィジェット同期に失敗しました',
+      'App Groupの設定を確認してください。アプリ本体とWidgetの両方で同じApp Groupが必要です。'
+    );
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     async function boot() {
@@ -167,7 +179,10 @@ function Root() {
         return;
       }
       try {
-        await reconcileWidgetEvents();
+        const didSyncWidget = await reconcileWidgetEvents();
+        if (!cancelled && !didSyncWidget) {
+          showWidgetSyncError();
+        }
       } catch (error) {
         console.warn('Failed to reconcile widget events', error);
       }
@@ -188,7 +203,7 @@ function Root() {
     return () => {
       cancelled = true;
     };
-  }, [loadData]);
+  }, [loadData, showWidgetSyncError]);
 
   useEffect(() => {
     if (ready) {
@@ -200,13 +215,18 @@ function Root() {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         void reconcileWidgetEvents()
+          .then((didSyncWidget) => {
+            if (!didSyncWidget) {
+              showWidgetSyncError();
+            }
+          })
           .catch((error) => console.warn('Failed to reconcile widget events', error))
           .then(load)
           .catch((error) => console.warn('Failed to reload app data', error));
       }
     });
     return () => subscription.remove();
-  }, [load]);
+  }, [load, showWidgetSyncError]);
 
   useEffect(() => {
     if (!deletedRecord) {
@@ -261,8 +281,12 @@ function Root() {
 
   const refreshAfterMutation = useCallback(async () => {
     await load();
-    return await publishWidgetSnapshot();
-  }, [load]);
+    const didSyncWidget = await publishWidgetSnapshot();
+    if (!didSyncWidget) {
+      showWidgetSyncError();
+    }
+    return didSyncWidget;
+  }, [load, showWidgetSyncError]);
 
   const handleRecord = useCallback(
     async (counterId: string, result: MatchResult) => {
@@ -296,13 +320,7 @@ function Root() {
     async (slotId: WidgetSlotId, counterId: string | null) => {
       await assignWidgetSlot(slotId, counterId);
       setSlotEditor(null);
-      const didSyncWidget = await refreshAfterMutation();
-      if (!didSyncWidget) {
-        Alert.alert(
-          'ウィジェット同期に失敗しました',
-          'App Groupの設定を確認してください。アプリ本体とWidgetの両方で同じApp Groupが必要です。'
-        );
-      }
+      await refreshAfterMutation();
     },
     [refreshAfterMutation]
   );

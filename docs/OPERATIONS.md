@@ -7,7 +7,7 @@
 - Expo Configは `app.config.js` を正とする。`app.json` は使わない。
 - iOS WidgetKit拡張を使う。
 - ウィジェット拡張は `@bacons/apple-targets` でCNG生成する。
-- アプリ/ウィジェット間の共有は App Group の `UserDefaults` とJSONファイルで行う。表示スナップショットは `UserDefaults` 優先、未同期イベントはJSONファイル。
+- アプリ/ウィジェット間の共有は App Group のJSONファイルと `UserDefaults` で行う。表示スナップショットはJSONファイル優先、未同期イベントはJSONファイル。
 - GitHub Actionsによるビルド/配信は親プロジェクトの共通docに従う。
 - GitHub Actionsはfastlane matchでアプリ本体とWidget拡張のApp Store用Profileを管理する。
 - `@expo/vector-icons` を使うため、SDK54用の `expo-font@14.0.12` を明示依存に入れる。これを外すとTestFlight単体アプリで白画面になる可能性がある。
