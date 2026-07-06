@@ -1811,14 +1811,14 @@ const styles = StyleSheet.create({
     gap: 8
   },
   appIconImage: {
-    width: 58,
-    height: 58,
-    borderRadius: 13
+    width: 52,
+    height: 52,
+    borderRadius: 12
   },
   appIconImageFrame: {
-    width: 70,
-    height: 70,
-    borderRadius: 16,
+    width: 62,
+    height: 62,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center'
   },
