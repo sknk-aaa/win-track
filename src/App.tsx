@@ -133,7 +133,7 @@ function Root() {
       ? `${totals.total}戦 / ${totals.winRateLabel}`
       : tab === 'history'
         ? `${history.length}件`
-        : 'ウィジェットとデータ';
+        : null;
 
   const loadData = useCallback(async (filterCounterId: string | null) => {
     const [active, all, records, widgetSlots] = await Promise.all([
@@ -371,7 +371,9 @@ function Root() {
       <View style={styles.header}>
         <View>
           <Text style={[styles.appTitle, { color: theme.colors.text }]}>{headerTitle}</Text>
-          <Text style={[styles.headerMeta, { color: theme.colors.muted }]}>{headerMeta}</Text>
+          {headerMeta ? (
+            <Text style={[styles.headerMeta, { color: theme.colors.muted }]}>{headerMeta}</Text>
+          ) : null}
         </View>
         {tab === 'counters' ? (
           <IconButton
@@ -627,7 +629,7 @@ function HistoryScreen({
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.historyContent}>
           {history.map((record) => (
             <HistoryRow key={record.id} record={record} theme={theme} onDelete={() => onDelete(record)} />
           ))}
@@ -1022,7 +1024,7 @@ function AppIconPicker({
   onApply: () => void;
 }) {
   return (
-    <View style={[styles.appIconPanel, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+    <View style={[styles.appIconPanel, { backgroundColor: theme.colors.surfaceSubtle, borderColor: theme.colors.border }]}>
       <View style={styles.appIconGrid}>
         {options.map((option) => {
           const isSelected = selected === option.id;
@@ -1038,11 +1040,13 @@ function AppIconPicker({
                 styles.appIconChoice,
                 {
                   borderColor: isSelected ? theme.colors.accent : theme.colors.border,
-                  backgroundColor: isSelected ? theme.colors.surfaceSubtle : theme.colors.surface,
+                  backgroundColor: theme.colors.surface,
                   opacity: pressed ? 0.82 : 1
                 }
               ]}>
-              <Image source={option.source} style={styles.appIconImage} />
+              <View style={[styles.appIconImageFrame, { backgroundColor: theme.colors.faint, borderColor: theme.colors.border }]}>
+                <Image source={option.source} style={styles.appIconImage} />
+              </View>
               <View style={styles.appIconChoiceFooter}>
                 <Text style={[styles.appIconLabel, { color: theme.colors.text }]}>{option.label}</Text>
                 {isSelected ? (
@@ -1521,6 +1525,12 @@ const styles = StyleSheet.create({
     paddingBottom: 110,
     gap: 12
   },
+  historyContent: {
+    paddingHorizontal: 16,
+    paddingTop: 2,
+    paddingBottom: 110,
+    gap: 10
+  },
   card: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 22,
@@ -1608,7 +1618,7 @@ const styles = StyleSheet.create({
   filterRail: {
     paddingHorizontal: 16,
     paddingTop: 4,
-    paddingBottom: 12,
+    paddingBottom: 6,
     gap: 8
   },
   filterChip: {
@@ -1644,7 +1654,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 12,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12
   },
   historyCompact: {
@@ -1670,7 +1680,8 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    marginTop: -6
   },
   historyName: {
     fontSize: 16,
@@ -1788,6 +1799,14 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 13
+  },
+  appIconImageFrame: {
+    width: 70,
+    height: 70,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   appIconChoiceFooter: {
     width: '100%',
