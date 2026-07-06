@@ -261,7 +261,7 @@ function Root() {
 
   const refreshAfterMutation = useCallback(async () => {
     await load();
-    await publishWidgetSnapshot();
+    return await publishWidgetSnapshot();
   }, [load]);
 
   const handleRecord = useCallback(
@@ -296,7 +296,13 @@ function Root() {
     async (slotId: WidgetSlotId, counterId: string | null) => {
       await assignWidgetSlot(slotId, counterId);
       setSlotEditor(null);
-      await refreshAfterMutation();
+      const didSyncWidget = await refreshAfterMutation();
+      if (!didSyncWidget) {
+        Alert.alert(
+          'ウィジェット同期に失敗しました',
+          'App Groupの設定を確認してください。アプリ本体とWidgetの両方で同じApp Groupが必要です。'
+        );
+      }
     },
     [refreshAfterMutation]
   );

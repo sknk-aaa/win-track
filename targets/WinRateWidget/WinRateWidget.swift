@@ -52,16 +52,21 @@ struct SharedStore {
   }
 
   static func loadSnapshot() -> WidgetSnapshotFile {
+    if let snapshotURL,
+       let data = try? Data(contentsOf: snapshotURL),
+       let decoded = try? JSONDecoder().decode(WidgetSnapshotFile.self, from: data) {
+      return decoded
+    }
     if let raw = sharedDefaults?.string(forKey: snapshotDefaultsKey),
        let data = raw.data(using: .utf8),
        let decoded = try? JSONDecoder().decode(WidgetSnapshotFile.self, from: data) {
       return decoded
     }
-    guard let snapshotURL, let data = try? Data(contentsOf: snapshotURL) else {
-      return WidgetSnapshotFile(slots: defaultSlots, updatedAt: ISO8601DateFormatter().string(from: Date()))
+    if let data = sharedDefaults?.data(forKey: snapshotDefaultsKey),
+       let decoded = try? JSONDecoder().decode(WidgetSnapshotFile.self, from: data) {
+      return decoded
     }
-    return (try? JSONDecoder().decode(WidgetSnapshotFile.self, from: data))
-      ?? WidgetSnapshotFile(slots: defaultSlots, updatedAt: ISO8601DateFormatter().string(from: Date()))
+    return WidgetSnapshotFile(slots: defaultSlots, updatedAt: ISO8601DateFormatter().string(from: Date()))
   }
 
   static func saveSnapshot(_ snapshot: WidgetSnapshotFile) {

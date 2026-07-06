@@ -43,16 +43,19 @@ export async function publishWidgetSnapshot(pendingEvents: WidgetPendingEvent[] 
     updatedAt: new Date().toISOString()
   };
   const payload = JSON.stringify(snapshot);
+  let didSave = true;
   try {
     await saveWidgetSnapshotPayload(payload);
   } catch (error) {
-    console.warn('Failed to save widget snapshot to shared defaults', error);
+    didSave = false;
+    console.warn('Failed to save widget snapshot to shared container', error);
   }
   try {
     await reloadAllWidgetTimelines();
   } catch (error) {
     console.warn('Failed to reload widget timelines', error);
   }
+  return didSave;
 }
 
 async function readPendingWidgetEvents() {

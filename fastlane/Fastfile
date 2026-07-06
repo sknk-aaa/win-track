@@ -1,6 +1,7 @@
 default_platform(:ios)
 
 WIDGET_TARGET = ENV["WIDGET_TARGET"] || "WinRateWidget"
+APP_GROUP_ID = "group.com.sknkaaa.wintrack"
 
 platform :ios do
   before_all do
@@ -31,6 +32,27 @@ platform :ios do
   def detect_workspace
     Dir[File.join(project_root, "ios", "*.xcworkspace")].first or
       UI.user_error!("ios/*.xcworkspace が見つかりません。先に expo prebuild + pod install を実行")
+  end
+
+  def verify_app_group_entitlements(ipa_path)
+    require "fileutils"
+    require "shellwords"
+    require "tmpdir"
+
+    Dir.mktmpdir("win-track-ipa") do |dir|
+      sh("unzip -q #{ipa_path.shellescape} -d #{dir.shellescape}")
+      app_bundle = Dir[File.join(dir, "Payload", "*.app")].first or
+        UI.user_error!("IPA内に.appが見つかりません")
+      widget_bundle = Dir[File.join(app_bundle, "PlugIns", "#{WIDGET_TARGET}.appex")].first or
+        UI.user_error!("IPA内に#{WIDGET_TARGET}.appexが見つかりません")
+
+      [app_bundle, widget_bundle].each do |bundle|
+        entitlements = sh("codesign -d --entitlements :- #{bundle.shellescape} 2>/dev/null", log: false)
+        unless entitlements.include?(APP_GROUP_ID)
+          UI.user_error!("#{File.basename(bundle)} に App Group #{APP_GROUP_ID} が入っていません")
+        end
+      end
+    end
   end
 
   def profile_name(identifier)
@@ -93,6 +115,7 @@ platform :ios do
         }
       }
     )
+    verify_app_group_entitlements(File.join(project_root, "build", "app.ipa"))
   end
 
   desc "ビルドしてTestFlightへ配信"
