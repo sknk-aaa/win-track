@@ -97,6 +97,10 @@ function Root() {
   const selectedCounter = counters.find((counter) => counter.id === detailId) ?? null;
   const archivedCounters = allCounters.filter((counter) => counter.isArchived);
   const totals = useMemo(() => summarizeTopLine(counters), [counters]);
+  const countersByCreatedAt = useMemo(
+    () => [...counters].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    [counters]
+  );
   const headerTitle = tab === 'counters' ? 'カウンター' : tab === 'history' ? '履歴' : '設定';
   const headerMeta =
     tab === 'counters'
@@ -317,7 +321,7 @@ function Root() {
 
       {tab === 'counters' ? (
         <CountersScreen
-          counters={counters}
+          counters={countersByCreatedAt}
           theme={theme}
           onCreate={() => setEditor({ type: 'create' })}
           onRecord={handleRecord}
