@@ -49,6 +49,7 @@ import {
 import { getTheme, type AppTheme } from './theme';
 import {
   getAlternateAppIconName,
+  requestAppReview,
   setAlternateAppIconName,
   type AlternateAppIconName
 } from './native/WinTrackWidgetBridge';
@@ -426,6 +427,7 @@ function Root() {
           isApplyingAppIcon={isApplyingAppIcon}
           onSelectAppIcon={setSelectedAppIcon}
           onApplyAppIcon={() => void handleApplyAppIcon()}
+          onRequestReview={() => void requestAppReview()}
           onRestore={(counter) => void restoreCounter(counter.id).then(refreshAfterMutation)}
           onDeleteCounter={(counter) => {
             Alert.alert('完全に削除しますか？', 'このカウンターと履歴は元に戻せません。', [
@@ -661,6 +663,7 @@ function SettingsScreen({
   isApplyingAppIcon,
   onSelectAppIcon,
   onApplyAppIcon,
+  onRequestReview,
   onRestore,
   onDeleteCounter,
   onResetAll
@@ -676,6 +679,7 @@ function SettingsScreen({
   isApplyingAppIcon: boolean;
   onSelectAppIcon: (icon: AppIconSelection) => void;
   onApplyAppIcon: () => void;
+  onRequestReview: () => void;
   onRestore: (counter: CounterSummary) => void;
   onDeleteCounter: (counter: CounterSummary) => void;
   onResetAll: () => void;
@@ -731,8 +735,15 @@ function SettingsScreen({
       />
 
       <SectionTitle title="アプリ情報" theme={theme} />
+      <SettingsRow
+        icon="heart"
+        title="レビューして応援"
+        value=""
+        theme={theme}
+        onPress={onRequestReview}
+      />
       <Text style={[styles.note, { color: theme.colors.muted }]}>
-        勝率カウンター 0.1.0 / データはこの端末内だけに保存されます。
+        勝率カウンター 1.0.0 / データはこの端末内だけに保存されます。
       </Text>
     </ScrollView>
   );

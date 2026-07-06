@@ -1,4 +1,5 @@
 import ExpoModulesCore
+import StoreKit
 import UIKit
 import WidgetKit
 
@@ -18,6 +19,17 @@ public class WinTrackWidgetBridgeModule: Module {
     AsyncFunction("reloadAllTimelines") {
       if #available(iOS 14.0, *) {
         WidgetCenter.shared.reloadAllTimelines()
+      }
+    }
+
+    AsyncFunction("requestReview") {
+      DispatchQueue.main.async {
+        guard let scene = UIApplication.shared.connectedScenes
+          .compactMap({ $0 as? UIWindowScene })
+          .first(where: { $0.activationState == .foregroundActive }) else {
+          return
+        }
+        SKStoreReviewController.requestReview(in: scene)
       }
     }
 
