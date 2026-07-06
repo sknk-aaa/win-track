@@ -232,6 +232,15 @@ function Root() {
   }, []);
 
   useEffect(() => {
+    for (const option of appIconOptions) {
+      const source = Image.resolveAssetSource(option.source);
+      if (source?.uri) {
+        void Image.prefetch(source.uri);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     async function loadDetailRecords() {
       if (!detailId) {
@@ -1030,6 +1039,7 @@ function AppIconPicker({
         {options.map((option) => {
           const isSelected = selected === option.id;
           const isCurrent = current === option.id;
+          const choiceBackground = isSelected ? theme.colors.surface : theme.colors.surfaceSubtle;
           return (
             <Pressable
               key={option.id}
@@ -1041,11 +1051,11 @@ function AppIconPicker({
                 styles.appIconChoice,
                 {
                   borderColor: isSelected ? theme.colors.accent : theme.colors.border,
-                  backgroundColor: isSelected ? theme.colors.surface : theme.colors.surfaceSubtle,
+                  backgroundColor: choiceBackground,
                   opacity: pressed ? 0.82 : 1
                 }
               ]}>
-              <View style={[styles.appIconImageFrame, { backgroundColor: theme.colors.faint, borderColor: theme.colors.border }]}>
+              <View style={[styles.appIconImageFrame, { backgroundColor: choiceBackground, borderColor: theme.colors.border }]}>
                 <Image source={option.source} style={styles.appIconImage} />
               </View>
               <View style={styles.appIconChoiceFooter}>
