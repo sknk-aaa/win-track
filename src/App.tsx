@@ -1024,7 +1024,7 @@ function AppIconPicker({
   onApply: () => void;
 }) {
   return (
-    <View style={[styles.appIconPanel, { backgroundColor: theme.colors.surfaceSubtle, borderColor: theme.colors.border }]}>
+    <View style={[styles.appIconPanel, { backgroundColor: theme.colors.faint, borderColor: theme.colors.border }]}>
       <View style={styles.appIconGrid}>
         {options.map((option) => {
           const isSelected = selected === option.id;
@@ -1040,7 +1040,7 @@ function AppIconPicker({
                 styles.appIconChoice,
                 {
                   borderColor: isSelected ? theme.colors.accent : theme.colors.border,
-                  backgroundColor: theme.colors.surface,
+                  backgroundColor: isSelected ? theme.colors.surface : theme.colors.surfaceSubtle,
                   opacity: pressed ? 0.82 : 1
                 }
               ]}>
