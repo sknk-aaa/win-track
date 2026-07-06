@@ -1025,7 +1025,7 @@ function AppIconPicker({
   onApply: () => void;
 }) {
   return (
-    <View style={[styles.appIconPanel, { backgroundColor: theme.colors.faint, borderColor: theme.colors.border }]}>
+    <View style={styles.appIconPanel}>
       <View style={styles.appIconGrid}>
         {options.map((option) => {
           const isSelected = selected === option.id;
@@ -1784,9 +1784,7 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   appIconPanel: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 20,
-    padding: 12,
+    paddingVertical: 4,
     gap: 12
   },
   appIconGrid: {
