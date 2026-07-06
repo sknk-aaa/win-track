@@ -17,7 +17,8 @@ import {
   TextInput,
   useColorScheme,
   View,
-  type GestureResponderEvent
+  type GestureResponderEvent,
+  type ImageSourcePropType
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -46,6 +47,11 @@ import {
   summarizeTopLine
 } from './lib/format';
 import { getTheme, type AppTheme } from './theme';
+import {
+  getAlternateAppIconName,
+  setAlternateAppIconName,
+  type AlternateAppIconName
+} from './native/WinTrackWidgetBridge';
 import type {
   CounterSummary,
   MatchRecord,
@@ -60,6 +66,13 @@ type IconName = ComponentProps<typeof Ionicons>['name'];
 type EditorMode =
   | { type: 'create' }
   | { type: 'edit'; counter: CounterSummary };
+type AppIconSelection = 'primary' | AlternateAppIconName;
+type AppIconOption = {
+  id: AppIconSelection;
+  nativeName: AlternateAppIconName | null;
+  label: string;
+  source: ImageSourcePropType;
+};
 
 const slotIds: WidgetSlotId[] = ['slot1', 'slot2', 'slot3'];
 const slotDisplayNames: Record<WidgetSlotId, string> = {
@@ -67,6 +80,12 @@ const slotDisplayNames: Record<WidgetSlotId, string> = {
   slot2: '枠2',
   slot3: '枠3'
 };
+const appIconOptions: AppIconOption[] = [
+  { id: 'primary', nativeName: null, label: '1', source: require('../assets/icon1.png') },
+  { id: 'AppIcon2', nativeName: 'AppIcon2', label: '2', source: require('../assets/icon2.png') },
+  { id: 'AppIcon3', nativeName: 'AppIcon3', label: '3', source: require('../assets/icon3.png') },
+  { id: 'AppIcon4', nativeName: 'AppIcon4', label: '4', source: require('../assets/icon4.png') }
+];
 const photoDirectoryName = 'counter-photos';
 
 export default function App() {
@@ -75,6 +94,10 @@ export default function App() {
       <Root />
     </SafeAreaProvider>
   );
+}
+
+function toAppIconSelection(iconName: AlternateAppIconName | null | undefined): AppIconSelection {
+  return iconName ?? 'primary';
 }
 
 function Root() {
@@ -92,6 +115,9 @@ function Root() {
   const [editor, setEditor] = useState<EditorMode | null>(null);
   const [slotEditor, setSlotEditor] = useState<WidgetSlotId | null>(null);
   const [deletedRecord, setDeletedRecord] = useState<MatchRecord | null>(null);
+  const [currentAppIcon, setCurrentAppIcon] = useState<AppIconSelection>('primary');
+  const [selectedAppIcon, setSelectedAppIcon] = useState<AppIconSelection>('primary');
+  const [isApplyingAppIcon, setIsApplyingAppIcon] = useState(false);
   const [startupError, setStartupError] = useState<string | null>(null);
 
   const selectedCounter = counters.find((counter) => counter.id === detailId) ?? null;
@@ -191,6 +217,22 @@ function Root() {
 
   useEffect(() => {
     let cancelled = false;
+    async function loadAppIcon() {
+      const iconName = await getAlternateAppIconName();
+      if (!cancelled) {
+        const selection = toAppIconSelection(iconName);
+        setCurrentAppIcon(selection);
+        setSelectedAppIcon(selection);
+      }
+    }
+    void loadAppIcon();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     async function loadDetailRecords() {
       if (!detailId) {
         setDetailRecords([]);
@@ -277,6 +319,28 @@ function Root() {
     });
   }, []);
 
+  const handleApplyAppIcon = useCallback(async () => {
+    if (selectedAppIcon === currentAppIcon || isApplyingAppIcon) {
+      return;
+    }
+    const icon = appIconOptions.find((option) => option.id === selectedAppIcon);
+    if (!icon) {
+      return;
+    }
+    setIsApplyingAppIcon(true);
+    try {
+      const appliedIconName = await setAlternateAppIconName(icon.nativeName);
+      const appliedSelection = toAppIconSelection(appliedIconName);
+      setCurrentAppIcon(appliedSelection);
+      setSelectedAppIcon(appliedSelection);
+    } catch (error) {
+      console.warn('Failed to apply app icon', error);
+      Alert.alert('変更できませんでした', '時間をおいてもう一度お試しください。');
+    } finally {
+      setIsApplyingAppIcon(false);
+    }
+  }, [currentAppIcon, isApplyingAppIcon, selectedAppIcon]);
+
   if (!ready) {
     return (
       <SafeAreaView style={[styles.root, { backgroundColor: theme.colors.background }]}>
@@ -345,6 +409,12 @@ function Root() {
           slots={slots}
           theme={theme}
           onEditSlot={setSlotEditor}
+          appIconOptions={appIconOptions}
+          selectedAppIcon={selectedAppIcon}
+          currentAppIcon={currentAppIcon}
+          isApplyingAppIcon={isApplyingAppIcon}
+          onSelectAppIcon={setSelectedAppIcon}
+          onApplyAppIcon={() => void handleApplyAppIcon()}
           onRestore={(counter) => void restoreCounter(counter.id).then(refreshAfterMutation)}
           onDeleteCounter={(counter) => {
             Alert.alert('完全に削除しますか？', 'このカウンターと履歴は元に戻せません。', [
@@ -573,6 +643,12 @@ function SettingsScreen({
   slots,
   theme,
   onEditSlot,
+  appIconOptions,
+  selectedAppIcon,
+  currentAppIcon,
+  isApplyingAppIcon,
+  onSelectAppIcon,
+  onApplyAppIcon,
   onRestore,
   onDeleteCounter,
   onResetAll
@@ -582,6 +658,12 @@ function SettingsScreen({
   slots: WidgetSlot[];
   theme: AppTheme;
   onEditSlot: (slotId: WidgetSlotId) => void;
+  appIconOptions: AppIconOption[];
+  selectedAppIcon: AppIconSelection;
+  currentAppIcon: AppIconSelection;
+  isApplyingAppIcon: boolean;
+  onSelectAppIcon: (icon: AppIconSelection) => void;
+  onApplyAppIcon: () => void;
   onRestore: (counter: CounterSummary) => void;
   onDeleteCounter: (counter: CounterSummary) => void;
   onResetAll: () => void;
@@ -624,6 +706,17 @@ function SettingsScreen({
 
       <SectionTitle title="データ" theme={theme} />
       <DangerButton label="すべてのデータを削除" theme={theme} onPress={onResetAll} />
+
+      <SectionTitle title="アプリアイコン" theme={theme} />
+      <AppIconPicker
+        options={appIconOptions}
+        selected={selectedAppIcon}
+        current={currentAppIcon}
+        isApplying={isApplyingAppIcon}
+        theme={theme}
+        onSelect={onSelectAppIcon}
+        onApply={onApplyAppIcon}
+      />
 
       <SectionTitle title="アプリ情報" theme={theme} />
       <Text style={[styles.note, { color: theme.colors.muted }]}>
@@ -908,6 +1001,70 @@ function SlotChoiceRow({
         color={selected ? theme.colors.accent : theme.colors.muted}
       />
     </Pressable>
+  );
+}
+
+function AppIconPicker({
+  options,
+  selected,
+  current,
+  isApplying,
+  theme,
+  onSelect,
+  onApply
+}: {
+  options: AppIconOption[];
+  selected: AppIconSelection;
+  current: AppIconSelection;
+  isApplying: boolean;
+  theme: AppTheme;
+  onSelect: (icon: AppIconSelection) => void;
+  onApply: () => void;
+}) {
+  return (
+    <View style={[styles.appIconPanel, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <View style={styles.appIconGrid}>
+        {options.map((option) => {
+          const isSelected = selected === option.id;
+          const isCurrent = current === option.id;
+          return (
+            <Pressable
+              key={option.id}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
+              accessibilityLabel={`アプリアイコン${option.label}`}
+              onPress={() => onSelect(option.id)}
+              style={({ pressed }) => [
+                styles.appIconChoice,
+                {
+                  borderColor: isSelected ? theme.colors.accent : theme.colors.border,
+                  backgroundColor: isSelected ? theme.colors.surfaceSubtle : theme.colors.surface,
+                  opacity: pressed ? 0.82 : 1
+                }
+              ]}>
+              <Image source={option.source} style={styles.appIconImage} />
+              <View style={styles.appIconChoiceFooter}>
+                <Text style={[styles.appIconLabel, { color: theme.colors.text }]}>{option.label}</Text>
+                {isSelected ? (
+                  <Ionicons name="checkmark-circle" size={18} color={theme.colors.accent} />
+                ) : null}
+              </View>
+              {isCurrent ? (
+                <View style={[styles.appIconCurrentBadge, { backgroundColor: theme.colors.text }]}>
+                  <Text style={[styles.appIconCurrentText, { color: theme.colors.background }]}>使用中</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+      <PrimaryButton
+        disabled={selected === current || isApplying}
+        label={isApplying ? '変更中' : '決定'}
+        theme={theme}
+        onPress={onApply}
+      />
+    </View>
   );
 }
 
@@ -1605,6 +1762,51 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 13,
     fontWeight: '700'
+  },
+  appIconPanel: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 20,
+    padding: 12,
+    gap: 12
+  },
+  appIconGrid: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  appIconChoice: {
+    flex: 1,
+    minWidth: 0,
+    borderWidth: 2,
+    borderRadius: 18,
+    padding: 7,
+    gap: 7
+  },
+  appIconImage: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 13
+  },
+  appIconChoiceFooter: {
+    minHeight: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  appIconLabel: {
+    fontSize: 13,
+    fontWeight: '900'
+  },
+  appIconCurrentBadge: {
+    position: 'absolute',
+    top: 5,
+    left: 5,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 3
+  },
+  appIconCurrentText: {
+    fontSize: 10,
+    fontWeight: '900'
   },
   sectionTitle: {
     marginTop: 8,

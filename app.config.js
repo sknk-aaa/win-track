@@ -30,6 +30,7 @@ module.exports = () => {
         }
       ],
       'expo-font',
+      './plugins/withAlternateAppIcons',
       '@bacons/apple-targets'
     ]
   };
