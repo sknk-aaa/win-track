@@ -1771,22 +1771,26 @@ const styles = StyleSheet.create({
   },
   appIconGrid: {
     flexDirection: 'row',
-    gap: 8
+    flexWrap: 'wrap',
+    gap: 10
   },
   appIconChoice: {
-    flex: 1,
-    minWidth: 0,
+    width: '48%',
+    minHeight: 112,
     borderWidth: 2,
     borderRadius: 18,
-    padding: 7,
-    gap: 7
+    padding: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8
   },
   appIconImage: {
-    width: '100%',
-    aspectRatio: 1,
+    width: 58,
+    height: 58,
     borderRadius: 13
   },
   appIconChoiceFooter: {
+    width: '100%',
     minHeight: 20,
     flexDirection: 'row',
     alignItems: 'center',
