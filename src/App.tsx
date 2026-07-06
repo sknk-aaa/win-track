@@ -1054,7 +1054,7 @@ function AppIconPicker({
                   opacity: pressed ? 0.82 : 1
                 }
               ]}>
-              <View style={[styles.appIconImageFrame, { backgroundColor: choiceBackground, borderColor: theme.colors.border }]}>
+              <View style={[styles.appIconImageFrame, { backgroundColor: choiceBackground }]}>
                 <Image source={option.source} style={styles.appIconImage} />
               </View>
               <View style={styles.appIconChoiceFooter}>
@@ -1819,7 +1819,6 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center'
   },
