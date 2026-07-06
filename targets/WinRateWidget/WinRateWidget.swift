@@ -5,6 +5,7 @@ import WidgetKit
 
 private let appGroupIdentifier = "group.com.sknkaaa.wintrack"
 private let snapshotFileName = "widget-snapshot.json"
+private let snapshotDefaultsKey = "widget-snapshot"
 private let eventsFileName = "widget-events.json"
 
 struct WidgetSnapshotFile: Codable {
@@ -38,6 +39,10 @@ struct SharedStore {
     FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)
   }
 
+  static var sharedDefaults: UserDefaults? {
+    UserDefaults(suiteName: appGroupIdentifier)
+  }
+
   static var snapshotURL: URL? {
     containerURL?.appendingPathComponent(snapshotFileName)
   }
@@ -47,6 +52,11 @@ struct SharedStore {
   }
 
   static func loadSnapshot() -> WidgetSnapshotFile {
+    if let raw = sharedDefaults?.string(forKey: snapshotDefaultsKey),
+       let data = raw.data(using: .utf8),
+       let decoded = try? JSONDecoder().decode(WidgetSnapshotFile.self, from: data) {
+      return decoded
+    }
     guard let snapshotURL, let data = try? Data(contentsOf: snapshotURL) else {
       return WidgetSnapshotFile(slots: defaultSlots, updatedAt: ISO8601DateFormatter().string(from: Date()))
     }
@@ -55,10 +65,16 @@ struct SharedStore {
   }
 
   static func saveSnapshot(_ snapshot: WidgetSnapshotFile) {
-    guard let snapshotURL, let data = try? JSONEncoder().encode(snapshot) else {
+    guard let data = try? JSONEncoder().encode(snapshot) else {
       return
     }
-    try? data.write(to: snapshotURL, options: [.atomic])
+    if let raw = String(data: data, encoding: .utf8) {
+      sharedDefaults?.set(raw, forKey: snapshotDefaultsKey)
+      sharedDefaults?.synchronize()
+    }
+    if let snapshotURL {
+      try? data.write(to: snapshotURL, options: [.atomic])
+    }
   }
 
   static func appendEvent(_ event: PendingEvent) {

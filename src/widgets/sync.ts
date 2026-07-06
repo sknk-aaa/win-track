@@ -1,7 +1,7 @@
 import { Paths } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system/legacy';
 
-import { reloadAllWidgetTimelines } from '../native/WinTrackWidgetBridge';
+import { reloadAllWidgetTimelines, saveWidgetSnapshotPayload } from '../native/WinTrackWidgetBridge';
 import { formatWinRate } from '../lib/format';
 import {
   listCounters,
@@ -44,11 +44,21 @@ export async function publishWidgetSnapshot(pendingEvents: WidgetPendingEvent[] 
     slots: slots.map((slot) => toSnapshot(slot, counters, pendingEvents)),
     updatedAt: new Date().toISOString()
   };
+  const payload = JSON.stringify(snapshot);
   try {
-    await writeJson(snapshotFileName, snapshot);
+    await saveWidgetSnapshotPayload(payload);
+  } catch (error) {
+    console.warn('Failed to save widget snapshot to shared defaults', error);
+  }
+  try {
+    await writeJsonString(snapshotFileName, payload);
+  } catch (error) {
+    console.warn('Failed to save widget snapshot file', error);
+  }
+  try {
     await reloadAllWidgetTimelines();
   } catch (error) {
-    console.warn('Failed to update widget snapshot', error);
+    console.warn('Failed to reload widget timelines', error);
   }
 }
 
@@ -142,11 +152,15 @@ async function readJson<T>(fileName: string) {
 }
 
 async function writeJson(fileName: string, value: unknown) {
+  await writeJsonString(fileName, JSON.stringify(value));
+}
+
+async function writeJsonString(fileName: string, value: string) {
   const uri = getSharedFileUri(fileName);
   if (!uri) {
     return;
   }
-  await FileSystem.writeAsStringAsync(uri, JSON.stringify(value));
+  await FileSystem.writeAsStringAsync(uri, value);
 }
 
 function getSharedFileUri(fileName: string) {

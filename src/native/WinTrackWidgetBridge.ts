@@ -4,6 +4,7 @@ export type AlternateAppIconName = 'AppIcon2' | 'AppIcon3' | 'AppIcon4';
 
 type WinTrackWidgetBridgeModule = {
   reloadAllTimelines: () => Promise<void>;
+  saveWidgetSnapshot?: (payload: string) => Promise<void>;
   getAlternateIconName?: () => Promise<AlternateAppIconName | null>;
   setAlternateIconName?: (iconName: AlternateAppIconName | null) => Promise<AlternateAppIconName | null>;
 };
@@ -20,6 +21,10 @@ function getNativeModule() {
 
 export async function reloadAllWidgetTimelines() {
   await getNativeModule()?.reloadAllTimelines();
+}
+
+export async function saveWidgetSnapshotPayload(payload: string) {
+  await getNativeModule()?.saveWidgetSnapshot?.(payload);
 }
 
 export async function getAlternateAppIconName() {

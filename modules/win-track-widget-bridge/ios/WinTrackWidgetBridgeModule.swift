@@ -2,9 +2,18 @@ import ExpoModulesCore
 import UIKit
 import WidgetKit
 
+private let appGroupIdentifier = "group.com.sknkaaa.wintrack"
+private let snapshotDefaultsKey = "widget-snapshot"
+
 public class WinTrackWidgetBridgeModule: Module {
   public func definition() -> ModuleDefinition {
     Name("WinTrackWidgetBridge")
+
+    AsyncFunction("saveWidgetSnapshot") { (payload: String) in
+      let defaults = UserDefaults(suiteName: appGroupIdentifier)
+      defaults?.set(payload, forKey: snapshotDefaultsKey)
+      defaults?.synchronize()
+    }
 
     AsyncFunction("reloadAllTimelines") {
       if #available(iOS 14.0, *) {
