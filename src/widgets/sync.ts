@@ -155,5 +155,6 @@ function getSharedFileUri(fileName: string) {
   if (!baseUri) {
     return null;
   }
-  return `${baseUri.endsWith('/') ? baseUri : `${baseUri}/`}${fileName}`;
+  const fileUri = baseUri.startsWith('file://') ? baseUri : `file://${baseUri}`;
+  return `${fileUri.endsWith('/') ? fileUri : `${fileUri}/`}${fileName}`;
 }

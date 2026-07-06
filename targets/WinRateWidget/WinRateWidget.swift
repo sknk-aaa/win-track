@@ -203,17 +203,14 @@ struct WinRateWidgetView: View {
 
   private var smallView: some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text(slot.label)
-        .font(.caption2.weight(.semibold))
-        .foregroundStyle(.secondary)
-      Text(slot.name)
+      Text(slot.isAvailable ? slot.name : slot.label)
         .font(.headline.weight(.semibold))
         .lineLimit(1)
       Text(slot.winRateLabel)
         .font(.system(size: 34, weight: .black, design: .rounded))
         .monospacedDigit()
         .minimumScaleFactor(0.75)
-      Text("\(slot.wins)勝 / \(slot.losses)負")
+      Text(slot.isAvailable ? "\(slot.wins)勝 / \(slot.losses)負" : slot.name)
         .font(.caption.weight(.medium))
         .foregroundStyle(.secondary)
       Spacer(minLength: 0)
@@ -229,17 +226,14 @@ struct WinRateWidgetView: View {
   private var mediumView: some View {
     HStack(spacing: 16) {
       VStack(alignment: .leading, spacing: 8) {
-        Text(slot.label)
-          .font(.caption.weight(.semibold))
-          .foregroundStyle(.secondary)
-        Text(slot.name)
+        Text(slot.isAvailable ? slot.name : slot.label)
           .font(.headline.weight(.semibold))
           .lineLimit(1)
         Text(slot.winRateLabel)
           .font(.system(size: 42, weight: .black, design: .rounded))
           .monospacedDigit()
           .minimumScaleFactor(0.7)
-        Text("\(slot.wins)勝 / \(slot.losses)負 / \(slot.total)戦")
+        Text(slot.isAvailable ? "\(slot.wins)勝 / \(slot.losses)負 / \(slot.total)戦" : slot.name)
           .font(.caption.weight(.medium))
           .foregroundStyle(.secondary)
       }

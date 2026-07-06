@@ -186,12 +186,6 @@ function Root() {
   }, [deletedRecord]);
 
   useEffect(() => {
-    if (ready && counters.length === 0 && allCounters.length === 0) {
-      setEditor({ type: 'create' });
-    }
-  }, [allCounters.length, counters.length, ready]);
-
-  useEffect(() => {
     let cancelled = false;
     async function loadDetailRecords() {
       if (!detailId) {
@@ -446,12 +440,14 @@ function CountersScreen({
 }) {
   if (counters.length === 0) {
     return (
-      <View style={styles.emptyWrap}>
-        <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>最初のカウンターを作成</Text>
+      <View style={styles.firstCounterWrap}>
+        <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>まずはカウンターを作成しましょう</Text>
         <Text style={[styles.emptyText, { color: theme.colors.muted }]}>
-          チーム、デッキ、キャラごとに勝率を分けて記録できます。
+          設定項目は名前と写真だけです。写真は任意なので、名前だけですぐ始められます。
         </Text>
-        <PrimaryButton label="作成する" theme={theme} onPress={onCreate} />
+        <View style={styles.firstCounterButton}>
+          <PrimaryButton label="カウンターを作成" theme={theme} onPress={onCreate} />
+        </View>
       </View>
     );
   }
@@ -550,9 +546,9 @@ function HistoryScreen({
         ))}
       </ScrollView>
       {history.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>履歴はまだありません</Text>
-          <Text style={[styles.emptyText, { color: theme.colors.muted }]}>
+        <View style={styles.historyEmptyWrap}>
+          <Text style={[styles.historyEmptyTitle, { color: theme.colors.text }]}>履歴はまだありません</Text>
+          <Text style={[styles.historyEmptyText, { color: theme.colors.muted }]}>
             勝ち/負けを記録するとここに並びます。
           </Text>
         </View>
@@ -589,6 +585,9 @@ function SettingsScreen({
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
       <SectionTitle title="ウィジェット枠" theme={theme} />
+      <Text style={[styles.note, { color: theme.colors.muted }]}>
+        ロック画面ウィジェットは初期状態で枠1を表示します。
+      </Text>
       {slotIds.map((slotId) => {
         const slot = slots.find((candidate) => candidate.id === slotId);
         const counter = counters.find((candidate) => candidate.id === slot?.counterId);
@@ -780,7 +779,7 @@ function CounterEditor({
           </View>
           <View style={styles.photoActions}>
             <SecondaryButton label="写真を選択" theme={theme} onPress={() => void pickImage('library')} />
-            <SecondaryButton label="カメラ" theme={theme} onPress={() => void pickImage('camera')} />
+            <SecondaryButton label="カメラで撮影" theme={theme} onPress={() => void pickImage('camera')} />
             {photoUri ? <DangerButton label="写真削除" theme={theme} onPress={() => setPhotoUri(null)} /> : null}
           </View>
           <PrimaryButton
@@ -1434,6 +1433,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600'
   },
+  firstCounterWrap: {
+    flex: 1,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14
+  },
+  firstCounterButton: {
+    alignSelf: 'stretch',
+    marginTop: 4
+  },
   filterRail: {
     paddingHorizontal: 16,
     paddingTop: 4,
@@ -1451,6 +1461,21 @@ const styles = StyleSheet.create({
   filterChipText: {
     fontSize: 14,
     fontWeight: '800'
+  },
+  historyEmptyWrap: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    gap: 8
+  },
+  historyEmptyTitle: {
+    fontSize: 22,
+    fontWeight: '900'
+  },
+  historyEmptyText: {
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '600'
   },
   historyRow: {
     minHeight: 66,
