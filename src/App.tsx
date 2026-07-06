@@ -609,6 +609,7 @@ function HistoryScreen({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.filterScroller}
         contentContainerStyle={styles.filterRail}>
         <FilterChip label="すべて" active={filter === null} theme={theme} onPress={() => onChangeFilter(null)} />
         {counters.map((counter) => (
@@ -629,7 +630,7 @@ function HistoryScreen({
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.historyContent}>
+        <ScrollView style={styles.historyList} contentContainerStyle={styles.historyContent}>
           {history.map((record) => (
             <HistoryRow key={record.id} record={record} theme={theme} onDelete={() => onDelete(record)} />
           ))}
@@ -1620,6 +1621,14 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 6,
     gap: 8
+  },
+  filterScroller: {
+    flexGrow: 0,
+    height: 48,
+    maxHeight: 48
+  },
+  historyList: {
+    flex: 1
   },
   filterChip: {
     height: 38,
