@@ -216,6 +216,10 @@ export async function deleteRecord(recordId: string) {
   await updateCounterLastRecordedAt(row.counterId);
 }
 
+export async function restoreRecord(record: MatchRecord) {
+  await insertRecord(record.id, record.counterId, record.result, record.createdAt);
+}
+
 export async function undoLastRecord(counterId: string) {
   const db = await getDb();
   const row = await db.getFirstAsync<{ id: string }>(

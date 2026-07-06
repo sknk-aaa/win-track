@@ -8,6 +8,7 @@ import {
   Alert,
   AppState,
   Image,
+  InteractionManager,
   Modal,
   Pressable,
   ScrollView,
@@ -33,6 +34,7 @@ import {
   recordMatch,
   resetAllData,
   restoreCounter,
+  restoreRecord,
   undoLastRecord,
   updateCounter
 } from './data/store';
@@ -89,11 +91,19 @@ function Root() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorMode | null>(null);
   const [slotEditor, setSlotEditor] = useState<WidgetSlotId | null>(null);
+  const [deletedRecord, setDeletedRecord] = useState<MatchRecord | null>(null);
   const [startupError, setStartupError] = useState<string | null>(null);
 
   const selectedCounter = counters.find((counter) => counter.id === detailId) ?? null;
   const archivedCounters = allCounters.filter((counter) => counter.isArchived);
   const totals = useMemo(() => summarizeTopLine(counters), [counters]);
+  const headerTitle = tab === 'counters' ? 'カウンター' : tab === 'history' ? '履歴' : '設定';
+  const headerMeta =
+    tab === 'counters'
+      ? `${totals.total}戦 / ${totals.winRateLabel}`
+      : tab === 'history'
+        ? `${history.length}件`
+        : 'ウィジェットとデータ';
 
   const loadData = useCallback(async (filterCounterId: string | null) => {
     const [active, all, records, widgetSlots] = await Promise.all([
@@ -168,6 +178,14 @@ function Root() {
   }, [load]);
 
   useEffect(() => {
+    if (!deletedRecord) {
+      return;
+    }
+    const timer = setTimeout(() => setDeletedRecord(null), 4500);
+    return () => clearTimeout(timer);
+  }, [deletedRecord]);
+
+  useEffect(() => {
     if (ready && counters.length === 0 && allCounters.length === 0) {
       setEditor({ type: 'create' });
     }
@@ -233,6 +251,34 @@ function Root() {
     [refreshAfterMutation]
   );
 
+  const handleDeleteHistoryRecord = useCallback(
+    async (record: MatchRecord) => {
+      await deleteRecord(record.id);
+      setDeletedRecord(record);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await refreshAfterMutation();
+    },
+    [refreshAfterMutation]
+  );
+
+  const handleUndoDelete = useCallback(async () => {
+    if (!deletedRecord) {
+      return;
+    }
+    const record = deletedRecord;
+    setDeletedRecord(null);
+    await restoreRecord(record);
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await refreshAfterMutation();
+  }, [deletedRecord, refreshAfterMutation]);
+
+  const handleOpenDetailEditor = useCallback((counter: CounterSummary) => {
+    setDetailId(null);
+    InteractionManager.runAfterInteractions(() => {
+      setEditor({ type: 'edit', counter });
+    });
+  }, []);
+
   if (!ready) {
     return (
       <SafeAreaView style={[styles.root, { backgroundColor: theme.colors.background }]}>
@@ -262,10 +308,8 @@ function Root() {
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
       <View style={styles.header}>
         <View>
-          <Text style={[styles.appTitle, { color: theme.colors.text }]}>勝率カウンター</Text>
-          <Text style={[styles.headerMeta, { color: theme.colors.muted }]}>
-            {totals.total}戦 / {totals.winRateLabel}
-          </Text>
+          <Text style={[styles.appTitle, { color: theme.colors.text }]}>{headerTitle}</Text>
+          <Text style={[styles.headerMeta, { color: theme.colors.muted }]}>{headerMeta}</Text>
         </View>
         {tab === 'counters' ? (
           <IconButton
@@ -293,18 +337,7 @@ function Root() {
           filter={historyFilter}
           theme={theme}
           onChangeFilter={setHistoryFilter}
-          onDelete={(record) => {
-            Alert.alert('この履歴を削除しますか？', '勝率と勝敗数はすぐ再計算されます。', [
-              { text: 'キャンセル', style: 'cancel' },
-              {
-                text: '削除',
-                style: 'destructive',
-                onPress: () => {
-                  void deleteRecord(record.id).then(refreshAfterMutation);
-                }
-              }
-            ]);
-          }}
+          onDelete={(record) => void handleDeleteHistoryRecord(record)}
         />
       ) : null}
       {tab === 'settings' ? (
@@ -348,6 +381,8 @@ function Root() {
 
       <TabBar active={tab} theme={theme} onChange={setTab} />
 
+      {deletedRecord ? <UndoToast theme={theme} onUndo={() => void handleUndoDelete()} /> : null}
+
       {selectedCounter ? (
         <CounterDetail
           counter={selectedCounter}
@@ -356,7 +391,7 @@ function Root() {
           onClose={() => setDetailId(null)}
           onRecord={handleRecord}
           onUndo={() => void undoLastRecord(selectedCounter.id).then(refreshAfterMutation)}
-          onEdit={() => setEditor({ type: 'edit', counter: selectedCounter })}
+          onEdit={() => handleOpenDetailEditor(selectedCounter)}
           onArchive={() => {
             Alert.alert('アーカイブしますか？', '通常の一覧と履歴には表示されなくなります。', [
               { text: 'キャンセル', style: 'cancel' },
@@ -705,20 +740,17 @@ function CounterEditor({
           onClose={onCancel}
         />
         <ScrollView contentContainerStyle={styles.modalContent}>
-          <View style={styles.editorPhotoWrap}>
-            {photoUri ? (
-              <Image source={{ uri: photoUri }} style={styles.editorPhoto} />
-            ) : (
-              <View style={[styles.editorPhotoEmpty, { backgroundColor: theme.colors.surfaceSubtle }]}>
-                <Ionicons name="image-outline" size={34} color={theme.colors.muted} />
+          {mode.type === 'create' ? (
+            <View style={[styles.editorHint, { backgroundColor: theme.colors.surfaceSubtle }]}>
+              <Ionicons name="checkmark-circle" size={22} color={theme.colors.win} />
+              <View style={styles.editorHintTextArea}>
+                <Text style={[styles.editorHintTitle, { color: theme.colors.text }]}>名前だけで開始できます</Text>
+                <Text style={[styles.editorHintText, { color: theme.colors.muted }]}>
+                  写真は任意です。あとからいつでも追加できます。
+                </Text>
               </View>
-            )}
-          </View>
-          <View style={styles.photoActions}>
-            <SecondaryButton label="写真を選択" theme={theme} onPress={() => void pickImage('library')} />
-            <SecondaryButton label="カメラ" theme={theme} onPress={() => void pickImage('camera')} />
-            {photoUri ? <DangerButton label="写真削除" theme={theme} onPress={() => setPhotoUri(null)} /> : null}
-          </View>
+            </View>
+          ) : null}
           <Text style={[styles.inputLabel, { color: theme.colors.muted }]}>名前</Text>
           <TextInput
             value={name}
@@ -736,9 +768,24 @@ function CounterEditor({
             maxLength={32}
             autoFocus
           />
+          <Text style={[styles.inputLabel, { color: theme.colors.muted }]}>写真（任意）</Text>
+          <View style={styles.editorPhotoWrap}>
+            {photoUri ? (
+              <Image source={{ uri: photoUri }} style={styles.editorPhoto} />
+            ) : (
+              <View style={[styles.editorPhotoEmpty, { backgroundColor: theme.colors.surfaceSubtle }]}>
+                <Ionicons name="image-outline" size={34} color={theme.colors.muted} />
+              </View>
+            )}
+          </View>
+          <View style={styles.photoActions}>
+            <SecondaryButton label="写真を選択" theme={theme} onPress={() => void pickImage('library')} />
+            <SecondaryButton label="カメラ" theme={theme} onPress={() => void pickImage('camera')} />
+            {photoUri ? <DangerButton label="写真削除" theme={theme} onPress={() => setPhotoUri(null)} /> : null}
+          </View>
           <PrimaryButton
             disabled={!canSave}
-            label="保存"
+            label={mode.type === 'create' ? '作成する' : '保存'}
             theme={theme}
             onPress={() => void onSave(name, photoUri, mode)}
           />
@@ -763,24 +810,42 @@ function SlotEditor({
   onCancel: () => void;
   onSave: (slotId: WidgetSlotId, counterId: string | null) => Promise<void>;
 }) {
+  const selectedCounter = counters.find((counter) => counter.id === selectedCounterId) ?? null;
   return (
     <Modal animationType="slide" presentationStyle="pageSheet" onRequestClose={onCancel}>
       <SafeAreaView style={[styles.modalRoot, { backgroundColor: theme.colors.background }]}>
         <ModalHeader title={`${slotDisplayNames[slotId]}の割り当て`} theme={theme} onClose={onCancel} />
         <ScrollView contentContainerStyle={styles.modalContent}>
-          <SettingsRow
-            icon="remove-circle-outline"
-            title="未設定"
-            value={selectedCounterId === null ? '選択中' : ''}
+          <View style={[styles.slotSummary, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            <View style={[styles.slotSummaryIcon, { backgroundColor: theme.colors.surfaceSubtle }]}>
+              <Ionicons name="apps" size={22} color={theme.colors.accent} />
+            </View>
+            <View style={styles.slotSummaryTextArea}>
+              <Text style={[styles.slotSummaryLabel, { color: theme.colors.muted }]}>現在の表示</Text>
+              <Text style={[styles.slotSummaryTitle, { color: theme.colors.text }]}>
+                {selectedCounter?.name ?? '未設定'}
+              </Text>
+              <Text style={[styles.slotSummaryText, { color: theme.colors.muted }]}>
+                下から選ぶと、この枠にすぐ保存されます。
+              </Text>
+            </View>
+          </View>
+          <SectionTitle title="表示するカウンター" theme={theme} />
+          <SlotChoiceRow
+            title="割り当てなし"
+            meta="この枠を空にします"
+            selected={selectedCounterId === null}
             theme={theme}
+            icon="remove-circle-outline"
             onPress={() => void onSave(slotId, null)}
           />
           {counters.map((counter) => (
-            <SettingsRow
+            <SlotChoiceRow
               key={counter.id}
-              icon="stats-chart"
+              counter={counter}
               title={counter.name}
-              value={selectedCounterId === counter.id ? '選択中' : `${counter.total}戦`}
+              meta={`${counter.total}戦 / ${formatWinRate(counter.wins, counter.losses)}`}
+              selected={selectedCounterId === counter.id}
               theme={theme}
               onPress={() => void onSave(slotId, counter.id)}
             />
@@ -788,6 +853,58 @@ function SlotEditor({
         </ScrollView>
       </SafeAreaView>
     </Modal>
+  );
+}
+
+function SlotChoiceRow({
+  counter,
+  icon,
+  title,
+  meta,
+  selected,
+  theme,
+  onPress
+}: {
+  counter?: CounterSummary;
+  icon?: IconName;
+  title: string;
+  meta: string;
+  selected: boolean;
+  theme: AppTheme;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.slotChoiceRow,
+        {
+          backgroundColor: selected ? theme.colors.surfaceSubtle : theme.colors.surface,
+          borderColor: selected ? theme.colors.accent : theme.colors.border,
+          opacity: pressed ? 0.82 : 1
+        }
+      ]}>
+      {counter ? (
+        <Avatar counter={counter} theme={theme} size={44} />
+      ) : (
+        <View style={[styles.slotChoiceIcon, { backgroundColor: theme.colors.surfaceSubtle }]}>
+          <Ionicons name={icon ?? 'ellipse-outline'} size={22} color={theme.colors.muted} />
+        </View>
+      )}
+      <View style={styles.slotChoiceTextArea}>
+        <Text numberOfLines={1} style={[styles.slotChoiceTitle, { color: theme.colors.text }]}>
+          {title}
+        </Text>
+        <Text style={[styles.slotChoiceMeta, { color: theme.colors.muted }]}>{meta}</Text>
+      </View>
+      <Ionicons
+        name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+        size={24}
+        color={selected ? theme.colors.accent : theme.colors.muted}
+      />
+    </Pressable>
   );
 }
 
@@ -1128,6 +1245,24 @@ function SmallTextButton({
   );
 }
 
+function UndoToast({ theme, onUndo }: { theme: AppTheme; onUndo: () => void }) {
+  return (
+    <View
+      style={[
+        styles.undoToast,
+        {
+          backgroundColor: theme.colors.text,
+          shadowColor: '#000000'
+        }
+      ]}>
+      <Text style={[styles.undoToastText, { color: theme.colors.background }]}>削除しました</Text>
+      <Pressable accessibilityRole="button" onPress={onUndo} hitSlop={8} style={styles.undoToastAction}>
+        <Text style={[styles.undoToastActionText, { color: theme.colors.background }]}>取り消し</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 async function persistPhoto(uri: string) {
   const directory = getPhotoDirectory();
   if (!directory || isStoredPhotoUri(uri)) {
@@ -1379,6 +1514,69 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700'
   },
+  slotSummary: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 20,
+    padding: 14,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center'
+  },
+  slotSummaryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  slotSummaryTextArea: {
+    flex: 1,
+    minWidth: 0
+  },
+  slotSummaryLabel: {
+    fontSize: 12,
+    fontWeight: '900'
+  },
+  slotSummaryTitle: {
+    marginTop: 3,
+    fontSize: 18,
+    fontWeight: '900'
+  },
+  slotSummaryText: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700'
+  },
+  slotChoiceRow: {
+    minHeight: 68,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  slotChoiceIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  slotChoiceTextArea: {
+    flex: 1,
+    minWidth: 0
+  },
+  slotChoiceTitle: {
+    fontSize: 16,
+    fontWeight: '900'
+  },
+  slotChoiceMeta: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '700'
+  },
   sectionTitle: {
     marginTop: 8,
     marginBottom: 2,
@@ -1430,6 +1628,36 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 8
   },
+  undoToast: {
+    position: 'absolute',
+    left: 18,
+    right: 18,
+    bottom: 88,
+    minHeight: 52,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10
+  },
+  undoToastText: {
+    fontSize: 15,
+    fontWeight: '800'
+  },
+  undoToastAction: {
+    minHeight: 44,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  undoToastActionText: {
+    fontSize: 15,
+    fontWeight: '900'
+  },
   tabButton: {
     minWidth: 86,
     minHeight: 54,
@@ -1476,6 +1704,27 @@ const styles = StyleSheet.create({
   },
   detailActions: {
     gap: 10
+  },
+  editorHint: {
+    borderRadius: 18,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  editorHintTextArea: {
+    flex: 1,
+    minWidth: 0
+  },
+  editorHintTitle: {
+    fontSize: 16,
+    fontWeight: '900'
+  },
+  editorHintText: {
+    marginTop: 3,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700'
   },
   editorPhotoWrap: {
     alignItems: 'center',
