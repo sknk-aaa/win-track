@@ -4,16 +4,39 @@ import UIKit
 import WidgetKit
 
 private let appGroupIdentifier = "group.com.sknkaaa.wintrack"
+private let snapshotFileName = "widget-snapshot.json"
 private let snapshotDefaultsKey = "widget-snapshot"
+private let eventsFileName = "widget-events.json"
 
 public class WinTrackWidgetBridgeModule: Module {
   public func definition() -> ModuleDefinition {
     Name("WinTrackWidgetBridge")
 
-    AsyncFunction("saveWidgetSnapshot") { (payload: String) in
+    AsyncFunction("saveWidgetSnapshot") { (payload: String) throws in
+      guard let snapshotURL = sharedContainerURL()?.appendingPathComponent(snapshotFileName) else {
+        throw sharedContainerError()
+      }
       let defaults = UserDefaults(suiteName: appGroupIdentifier)
       defaults?.set(payload, forKey: snapshotDefaultsKey)
       defaults?.synchronize()
+      try payload.write(to: snapshotURL, atomically: true, encoding: .utf8)
+    }
+
+    AsyncFunction("readWidgetEvents") { () throws -> String? in
+      guard let eventsURL = sharedContainerURL()?.appendingPathComponent(eventsFileName) else {
+        throw sharedContainerError()
+      }
+      guard FileManager.default.fileExists(atPath: eventsURL.path) else {
+        return nil
+      }
+      return try String(contentsOf: eventsURL, encoding: .utf8)
+    }
+
+    AsyncFunction("clearWidgetEvents") { () throws in
+      guard let eventsURL = sharedContainerURL()?.appendingPathComponent(eventsFileName) else {
+        throw sharedContainerError()
+      }
+      try "[]".write(to: eventsURL, atomically: true, encoding: .utf8)
     }
 
     AsyncFunction("reloadAllTimelines") {
@@ -63,5 +86,17 @@ public class WinTrackWidgetBridgeModule: Module {
         }
       }
     }
+  }
+
+  private func sharedContainerURL() -> URL? {
+    FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)
+  }
+
+  private func sharedContainerError() -> NSError {
+    NSError(
+      domain: "WinTrackWidgetBridge",
+      code: 1,
+      userInfo: [NSLocalizedDescriptionKey: "App Group shared container is unavailable."]
+    )
   }
 }

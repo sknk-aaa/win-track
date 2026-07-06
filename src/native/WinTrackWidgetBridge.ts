@@ -5,6 +5,8 @@ export type AlternateAppIconName = 'AppIcon2' | 'AppIcon3' | 'AppIcon4';
 type WinTrackWidgetBridgeModule = {
   reloadAllTimelines: () => Promise<void>;
   saveWidgetSnapshot?: (payload: string) => Promise<void>;
+  readWidgetEvents?: () => Promise<string | null>;
+  clearWidgetEvents?: () => Promise<void>;
   requestReview?: () => Promise<void>;
   getAlternateIconName?: () => Promise<AlternateAppIconName | null>;
   setAlternateIconName?: (iconName: AlternateAppIconName | null) => Promise<AlternateAppIconName | null>;
@@ -25,7 +27,27 @@ export async function reloadAllWidgetTimelines() {
 }
 
 export async function saveWidgetSnapshotPayload(payload: string) {
-  await getNativeModule()?.saveWidgetSnapshot?.(payload);
+  const nativeModule = getNativeModule();
+  if (!nativeModule?.saveWidgetSnapshot) {
+    throw new Error('Widget native module is unavailable.');
+  }
+  await nativeModule.saveWidgetSnapshot(payload);
+}
+
+export async function readWidgetEventsPayload() {
+  const nativeModule = getNativeModule();
+  if (!nativeModule?.readWidgetEvents) {
+    throw new Error('Widget native module is unavailable.');
+  }
+  return await nativeModule.readWidgetEvents();
+}
+
+export async function clearWidgetEventsPayload() {
+  const nativeModule = getNativeModule();
+  if (!nativeModule?.clearWidgetEvents) {
+    throw new Error('Widget native module is unavailable.');
+  }
+  await nativeModule.clearWidgetEvents();
 }
 
 export async function requestAppReview() {

@@ -1,7 +1,9 @@
-import { Paths } from 'expo-file-system';
-import * as FileSystem from 'expo-file-system/legacy';
-
-import { reloadAllWidgetTimelines, saveWidgetSnapshotPayload } from '../native/WinTrackWidgetBridge';
+import {
+  clearWidgetEventsPayload,
+  reloadAllWidgetTimelines,
+  readWidgetEventsPayload,
+  saveWidgetSnapshotPayload
+} from '../native/WinTrackWidgetBridge';
 import { formatWinRate } from '../lib/format';
 import {
   listCounters,
@@ -17,10 +19,6 @@ import type {
   WinRateWidgetProps
 } from '../types';
 
-const appGroupIdentifier = 'group.com.sknkaaa.wintrack';
-const snapshotFileName = 'widget-snapshot.json';
-const eventsFileName = 'widget-events.json';
-
 const slotLabels: Record<WidgetSlotId, string> = {
   'slot1': '枠1',
   'slot2': '枠2',
@@ -33,7 +31,7 @@ export async function reconcileWidgetEvents() {
     await recordWidgetEvent(event.id, event.counterId, event.result, event.createdAt);
   }
   if (pendingEvents.length > 0) {
-    await writeJson(eventsFileName, []);
+    await clearWidgetEventsPayload();
   }
   await publishWidgetSnapshot([]);
 }
@@ -51,11 +49,6 @@ export async function publishWidgetSnapshot(pendingEvents: WidgetPendingEvent[] 
     console.warn('Failed to save widget snapshot to shared defaults', error);
   }
   try {
-    await writeJsonString(snapshotFileName, payload);
-  } catch (error) {
-    console.warn('Failed to save widget snapshot file', error);
-  }
-  try {
     await reloadAllWidgetTimelines();
   } catch (error) {
     console.warn('Failed to reload widget timelines', error);
@@ -64,7 +57,8 @@ export async function publishWidgetSnapshot(pendingEvents: WidgetPendingEvent[] 
 
 async function readPendingWidgetEvents() {
   try {
-    const events = await readJson<WidgetPendingEvent[]>(eventsFileName);
+    const raw = await readWidgetEventsPayload();
+    const events = raw ? (JSON.parse(raw) as WidgetPendingEvent[]) : [];
     return dedupeEvents(events ?? []);
   } catch (error) {
     console.warn('Failed to read widget events', error);
@@ -136,39 +130,4 @@ function isWidgetPendingEvent(value: unknown): value is WidgetPendingEvent {
     (candidate.result === 'win' || candidate.result === 'loss') &&
     typeof candidate.createdAt === 'string'
   );
-}
-
-async function readJson<T>(fileName: string) {
-  const uri = getSharedFileUri(fileName);
-  if (!uri) {
-    return null;
-  }
-  const info = await FileSystem.getInfoAsync(uri);
-  if (!info.exists) {
-    return null;
-  }
-  const raw = await FileSystem.readAsStringAsync(uri);
-  return JSON.parse(raw) as T;
-}
-
-async function writeJson(fileName: string, value: unknown) {
-  await writeJsonString(fileName, JSON.stringify(value));
-}
-
-async function writeJsonString(fileName: string, value: string) {
-  const uri = getSharedFileUri(fileName);
-  if (!uri) {
-    return;
-  }
-  await FileSystem.writeAsStringAsync(uri, value);
-}
-
-function getSharedFileUri(fileName: string) {
-  const container = Paths.appleSharedContainers?.[appGroupIdentifier];
-  const baseUri = container?.uri;
-  if (!baseUri) {
-    return null;
-  }
-  const fileUri = baseUri.startsWith('file://') ? baseUri : `file://${baseUri}`;
-  return `${fileUri.endsWith('/') ? fileUri : `${fileUri}/`}${fileName}`;
 }
