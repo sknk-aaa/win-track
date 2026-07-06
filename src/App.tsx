@@ -1050,7 +1050,6 @@ function AppIconPicker({
               style={({ pressed }) => [
                 styles.appIconChoice,
                 {
-                  borderColor: isSelected ? theme.colors.accent : theme.colors.border,
                   backgroundColor: choiceBackground,
                   opacity: pressed ? 0.82 : 1
                 }
@@ -1805,7 +1804,6 @@ const styles = StyleSheet.create({
   appIconChoice: {
     width: '48%',
     minHeight: 112,
-    borderWidth: 2,
     borderRadius: 18,
     padding: 9,
     alignItems: 'center',
