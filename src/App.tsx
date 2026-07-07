@@ -154,14 +154,16 @@ function Root() {
     await loadData(historyFilter);
   }, [historyFilter, loadData]);
 
-  const showWidgetSyncError = useCallback(() => {
+  const showWidgetSyncError = useCallback((message: string | null) => {
     if (didShowWidgetSyncErrorRef.current) {
       return;
     }
     didShowWidgetSyncErrorRef.current = true;
     Alert.alert(
       'ウィジェット同期に失敗しました',
-      'App Groupの設定を確認してください。アプリ本体とWidgetの両方で同じApp Groupが必要です。'
+      message
+        ? `共有データを書き込めませんでした。\n\n詳細:\n${message}`
+        : '共有データを書き込めませんでした。'
     );
   }, []);
 
@@ -180,8 +182,8 @@ function Root() {
       }
       try {
         const didSyncWidget = await reconcileWidgetEvents();
-        if (!cancelled && !didSyncWidget) {
-          showWidgetSyncError();
+        if (!cancelled && !didSyncWidget.ok) {
+          showWidgetSyncError(didSyncWidget.message);
         }
       } catch (error) {
         console.warn('Failed to reconcile widget events', error);
@@ -216,8 +218,8 @@ function Root() {
       if (state === 'active') {
         void reconcileWidgetEvents()
           .then((didSyncWidget) => {
-            if (!didSyncWidget) {
-              showWidgetSyncError();
+            if (!didSyncWidget.ok) {
+              showWidgetSyncError(didSyncWidget.message);
             }
           })
           .catch((error) => console.warn('Failed to reconcile widget events', error))
@@ -282,8 +284,8 @@ function Root() {
   const refreshAfterMutation = useCallback(async () => {
     await load();
     const didSyncWidget = await publishWidgetSnapshot();
-    if (!didSyncWidget) {
-      showWidgetSyncError();
+    if (!didSyncWidget.ok) {
+      showWidgetSyncError(didSyncWidget.message);
     }
     return didSyncWidget;
   }, [load, showWidgetSyncError]);

@@ -31,7 +31,8 @@
 - ウィジェットには写真を出さない。
 - ウィジェットはアプリ内の枠1〜3にカウンターを割り当て、ウィジェット設定で枠を選ぶ。
 - SDK 54固定のため、`expo-widgets` は使わず、`@bacons/apple-targets` + Swift WidgetKit + App Group共有で実装。
-- ウィジェット表示スナップショットは App Group のJSONファイルを優先し、`UserDefaults` もフォールバックとして併用する。
+- ウィジェット表示スナップショットは App Group のJSONファイルと `UserDefaults` の両方を読み、`updatedAt` が新しい方を使う。
+- アプリ側のカスタムブリッジ保存が失敗した場合は、`@bacons/apple-targets` の `ExtensionStorage` で `UserDefaults` 保存へフォールバックする。
 - ウィジェット記録後の即時反映は最重要仕様。
 - ライト/ダーク両対応。
 - 初回は作成画面へ自動遷移せず、空状態で「名前と写真のみ、写真は任意」と説明してから作成ボタンを出す。

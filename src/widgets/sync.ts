@@ -1,3 +1,5 @@
+import { requireOptionalNativeModule } from 'expo-modules-core';
+
 import {
   clearWidgetEventsPayload,
   reloadAllWidgetTimelines,
@@ -19,6 +21,23 @@ import type {
   WinRateWidgetProps
 } from '../types';
 
+export type WidgetSyncResult = {
+  ok: boolean;
+  message: string | null;
+};
+
+const appGroupIdentifier = 'group.com.sknkaaa.wintrack';
+const snapshotDefaultsKey = 'widget-snapshot';
+const widgetKind = 'WinRateWidget';
+
+type ExtensionStorageModule = {
+  setString?: (key: string, value: string, group: string | null) => void;
+  get?: (key: string, group: string | null) => string | null;
+  reloadWidget?: (timeline: string | null) => void;
+};
+
+let extensionStorageModule: ExtensionStorageModule | null | undefined;
+
 const slotLabels: Record<WidgetSlotId, string> = {
   'slot1': '枠1',
   'slot2': '枠2',
@@ -39,8 +58,11 @@ export async function reconcileWidgetEvents() {
       console.warn('Failed to clear widget events', error);
     }
   }
-  const didPublishSnapshot = await publishWidgetSnapshot([]);
-  return didClearEvents && didPublishSnapshot;
+  const publishResult = await publishWidgetSnapshot([]);
+  return {
+    ok: didClearEvents && publishResult.ok,
+    message: didClearEvents ? publishResult.message : joinMessages('Failed to clear widget events.', publishResult.message)
+  };
 }
 
 export async function publishWidgetSnapshot(pendingEvents: WidgetPendingEvent[] = []) {
@@ -50,19 +72,66 @@ export async function publishWidgetSnapshot(pendingEvents: WidgetPendingEvent[] 
     updatedAt: new Date().toISOString()
   };
   const payload = JSON.stringify(snapshot);
-  let didSave = true;
+  let saveMessage: string | null = null;
   try {
     await saveWidgetSnapshotPayload(payload);
   } catch (error) {
-    didSave = false;
+    const nativeMessage = `Native bridge: ${getErrorMessage(error)}`;
     console.warn('Failed to save widget snapshot to shared container', error);
+    const fallbackResult = saveSnapshotWithExtensionStorage(payload);
+    if (!fallbackResult.ok) {
+      saveMessage = joinMessages(nativeMessage, fallbackResult.message);
+    }
   }
   try {
     await reloadAllWidgetTimelines();
   } catch (error) {
     console.warn('Failed to reload widget timelines', error);
+    try {
+      getExtensionStorageModule()?.reloadWidget?.(widgetKind);
+    } catch (fallbackError) {
+      console.warn('Failed to reload widget timelines with ExtensionStorage', fallbackError);
+    }
   }
-  return didSave;
+  return {
+    ok: saveMessage === null,
+    message: saveMessage
+  };
+}
+
+function saveSnapshotWithExtensionStorage(payload: string): WidgetSyncResult {
+  try {
+    const storage = getExtensionStorageModule();
+    if (!storage?.setString || !storage.get) {
+      return {
+        ok: false,
+        message: 'ExtensionStorage native module is unavailable.'
+      };
+    }
+    storage.setString(snapshotDefaultsKey, payload, appGroupIdentifier);
+    const storedPayload = storage.get(snapshotDefaultsKey, appGroupIdentifier);
+    if (storedPayload !== payload) {
+      return {
+        ok: false,
+        message: `ExtensionStorage: saved value verification failed. stored=${storedPayload ?? 'null'}`
+      };
+    }
+    storage.reloadWidget?.(widgetKind);
+    return { ok: true, message: null };
+  } catch (error) {
+    return {
+      ok: false,
+      message: `ExtensionStorage: ${getErrorMessage(error)}`
+    };
+  }
+}
+
+function getExtensionStorageModule() {
+  if (extensionStorageModule !== undefined) {
+    return extensionStorageModule;
+  }
+  extensionStorageModule = requireOptionalNativeModule<ExtensionStorageModule>('ExtensionStorage');
+  return extensionStorageModule;
 }
 
 async function readPendingWidgetEvents() {
@@ -140,4 +209,15 @@ function isWidgetPendingEvent(value: unknown): value is WidgetPendingEvent {
     (candidate.result === 'win' || candidate.result === 'loss') &&
     typeof candidate.createdAt === 'string'
   );
+}
+
+function joinMessages(...messages: (string | null)[]) {
+  return messages.filter((message): message is string => Boolean(message)).join('\n');
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
 }

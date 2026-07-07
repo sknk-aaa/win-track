@@ -52,19 +52,23 @@ struct SharedStore {
   }
 
   static func loadSnapshot() -> WidgetSnapshotFile {
+    var snapshots: [WidgetSnapshotFile] = []
     if let snapshotURL,
        let data = try? Data(contentsOf: snapshotURL),
        let decoded = try? JSONDecoder().decode(WidgetSnapshotFile.self, from: data) {
-      return decoded
+      snapshots.append(decoded)
     }
     if let raw = sharedDefaults?.string(forKey: snapshotDefaultsKey),
        let data = raw.data(using: .utf8),
        let decoded = try? JSONDecoder().decode(WidgetSnapshotFile.self, from: data) {
-      return decoded
+      snapshots.append(decoded)
     }
     if let data = sharedDefaults?.data(forKey: snapshotDefaultsKey),
        let decoded = try? JSONDecoder().decode(WidgetSnapshotFile.self, from: data) {
-      return decoded
+      snapshots.append(decoded)
+    }
+    if let latest = snapshots.max(by: { $0.updatedAt < $1.updatedAt }) {
+      return latest
     }
     return WidgetSnapshotFile(slots: defaultSlots, updatedAt: ISO8601DateFormatter().string(from: Date()))
   }
