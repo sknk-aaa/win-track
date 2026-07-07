@@ -90,7 +90,7 @@
 - `result`: `win` or `loss`
 - `createdAt`
 
-ウィジェットタップ時は、Swift WidgetKit側でウィジェット表示を即時更新し、App Group内の共有JSONに未同期イベントとして保持する。アプリ起動時/前面復帰時にSQLiteへ取り込み、取り込み後にウィジェットのスナップショットを再発行する。表示スナップショットは App Group のJSONファイルと `UserDefaults` の両方を読み、`updatedAt` が新しい方を使う。アプリ側のカスタムブリッジ保存が失敗した場合は `@bacons/apple-targets` の `ExtensionStorage` で `UserDefaults` 保存へフォールバックする。
+ウィジェットタップ時は、Swift WidgetKit側でウィジェット表示を即時更新し、App Group内の共有JSONとスナップショット内の `pendingEvents` に未同期イベントとして保持する。アプリ起動時/前面復帰時にSQLiteへ取り込み、取り込み後にウィジェットのスナップショットを再発行する。表示スナップショットは App Group のJSONファイルと `UserDefaults` の両方を読み、`updatedAt` が新しい方を使う。アプリ側のカスタムブリッジ保存が失敗した場合は `@bacons/apple-targets` の `ExtensionStorage` で `UserDefaults` 保存へフォールバックする。
 
 ## データ方針
 

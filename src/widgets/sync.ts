@@ -49,20 +49,15 @@ export async function reconcileWidgetEvents() {
   for (const event of pendingEvents) {
     await recordWidgetEvent(event.id, event.counterId, event.result, event.createdAt);
   }
-  let didClearEvents = true;
   if (pendingEvents.length > 0) {
     try {
       await clearWidgetEventsPayload();
     } catch (error) {
-      didClearEvents = false;
       console.warn('Failed to clear widget events', error);
     }
   }
   const publishResult = await publishWidgetSnapshot([]);
-  return {
-    ok: didClearEvents && publishResult.ok,
-    message: didClearEvents ? publishResult.message : joinMessages('Failed to clear widget events.', publishResult.message)
-  };
+  return publishResult;
 }
 
 export async function publishWidgetSnapshot(pendingEvents: WidgetPendingEvent[] = []) {
@@ -135,14 +130,30 @@ function getExtensionStorageModule() {
 }
 
 async function readPendingWidgetEvents() {
+  const events: WidgetPendingEvent[] = [];
   try {
     const raw = await readWidgetEventsPayload();
-    const events = raw ? (JSON.parse(raw) as WidgetPendingEvent[]) : [];
-    return dedupeEvents(events ?? []);
+    if (raw) {
+      events.push(...(JSON.parse(raw) as WidgetPendingEvent[]));
+    }
   } catch (error) {
     console.warn('Failed to read widget events', error);
+  }
+  try {
+    events.push(...readPendingWidgetEventsFromSnapshot());
+  } catch (error) {
+    console.warn('Failed to read widget pending events from snapshot', error);
+  }
+  return dedupeEvents(events);
+}
+
+function readPendingWidgetEventsFromSnapshot() {
+  const raw = getExtensionStorageModule()?.get?.(snapshotDefaultsKey, appGroupIdentifier);
+  if (!raw) {
     return [];
   }
+  const snapshot = JSON.parse(raw) as WinRateWidgetProps;
+  return snapshot.slots.flatMap((slot) => slot.pendingEvents ?? []);
 }
 
 function toSnapshot(
