@@ -51,6 +51,12 @@ platform :ios do
         unless entitlements.include?(APP_GROUP_ID)
           UI.user_error!("#{File.basename(bundle)} に App Group #{APP_GROUP_ID} が入っていません")
         end
+        profile_path = File.join(bundle, "embedded.mobileprovision")
+        UI.user_error!("#{File.basename(bundle)} に embedded.mobileprovision がありません") unless File.exist?(profile_path)
+        profile = sh("security cms -D -i #{profile_path.shellescape}", log: false)
+        unless profile.include?(APP_GROUP_ID)
+          UI.user_error!("#{File.basename(bundle)} の provisioning profile に App Group #{APP_GROUP_ID} が入っていません")
+        end
       end
     end
   end
@@ -61,7 +67,7 @@ platform :ios do
 
   desc "証明書/プロファイルを作成しmatchリポへ保存（初回1回だけ・アプリ＋Widget）"
   lane :certs do
-    match(type: "appstore", readonly: false, app_identifier: [app_id, widget_id], api_key: asc_api_key)
+    match(type: "appstore", readonly: false, force: true, app_identifier: [app_id, widget_id], api_key: asc_api_key)
   end
 
   desc "証明書取得→署名→IPAビルド（アプリ＋Widget）"

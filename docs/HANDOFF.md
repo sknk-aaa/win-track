@@ -48,6 +48,8 @@
 ## 既知の注意点
 
 - ウィジェットからの記録は、共有ストレージ更新とWidgetKit再読み込みの体感速度が品質を左右する。
+- 「ウィジェット同期に失敗しました / App Groupの設定を確認してください」が出た場合、App Group共有コンテナを実機で開けていない。Apple Developerの本体App ID/Widget App ID両方にApp Groups capabilityと `group.com.sknkaaa.wintrack` を付け、`iOS Certificates (one-time setup)` でmatch profileを強制再生成してからTestFlightを再実行する。
+- `iOS TestFlight` は署名済みentitlementsとembedded provisioning profileの両方にApp Groupが含まれるか検査する。
 - レイアウト寸法は実装後に実機確認で調整する。
 - `APPLE_TEAM_ID` はGitHub Secretsから `app.config.js` 経由でExpo Configへ注入する。
 - TestFlightで再度白画面が出る場合は、次は推測修正ではなくGitHub ActionsのビルドログとTestFlight/端末クラッシュログを確認する。

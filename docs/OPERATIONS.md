@@ -37,9 +37,9 @@ GitHub Actions Secrets:
 
 ## ビルド/配信
 
-1. App Store Connect / Apple Developerで本体Bundle ID、Widget Bundle ID、App Groupを作成する。
+1. App Store Connect / Apple Developerで本体Bundle ID、Widget Bundle ID、App Groupを作成し、本体とWidgetの両方のApp IDでApp Groups capabilityを有効化して `group.com.sknkaaa.wintrack` を割り当てる。
 2. GitHub Secretsを登録する。
-3. Actionsの `iOS Certificates (one-time setup)` を初回1回実行する。
+3. Actionsの `iOS Certificates (one-time setup)` を実行し、App Store用provisioning profileを再生成してmatchリポへ保存する。App Groups capabilityを変更した後も必ず再実行する。
 4. Actionsの `iOS TestFlight` を実行する。
 5. TestFlightでWidgetKit拡張とApp Groupの即時反映を実機確認する。
 
@@ -47,6 +47,8 @@ GitHub Actions Secrets:
 
 ## TestFlight確認
 
+- アプリ内で「ウィジェット同期に失敗しました / App Groupの設定を確認してください」と出た場合、実機ビルドがApp Group共有コンテナを開けていない。Apple Developerで本体App IDとWidget App IDの両方にApp Groups capabilityと `group.com.sknkaaa.wintrack` が入っていることを確認し、`iOS Certificates (one-time setup)` でprofileを再生成してから `iOS TestFlight` を実行する。
+- `iOS TestFlight` laneはIPA内の本体/Widgetそれぞれの署名済みentitlementsとembedded provisioning profileに `group.com.sknkaaa.wintrack` が入っていることを検査する。
 - 白画面対策後の確認では、最新コミットをpushして `iOS TestFlight` を再実行する。
 - 2026-07-06の `iOS TestFlight` workflow run `28781717615` は成功済み。
 - `npx expo-doctor` はネットワーク起因のExpo API / React Native Directory接続失敗を除き、依存・設定エラーがない状態にする。
