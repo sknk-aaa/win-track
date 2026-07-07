@@ -8,12 +8,14 @@ import {
 } from '../native/WinTrackWidgetBridge';
 import { formatWinRate } from '../lib/format';
 import {
+  getResultNotation,
   listCounters,
   listWidgetSlots,
   recordWidgetEvent
 } from '../data/store';
 import type {
   CounterSummary,
+  ResultNotation,
   WidgetCounterSnapshot,
   WidgetPendingEvent,
   WidgetSlot,
@@ -61,9 +63,13 @@ export async function reconcileWidgetEvents() {
 }
 
 export async function publishWidgetSnapshot(pendingEvents: WidgetPendingEvent[] = []) {
-  const [counters, slots] = await Promise.all([listCounters(), listWidgetSlots()]);
+  const [counters, slots, resultNotation] = await Promise.all([
+    listCounters(),
+    listWidgetSlots(),
+    getResultNotation()
+  ]);
   const snapshot: WinRateWidgetProps = {
-    slots: slots.map((slot) => toSnapshot(slot, counters, pendingEvents)),
+    slots: slots.map((slot) => toSnapshot(slot, counters, pendingEvents, resultNotation)),
     updatedAt: new Date().toISOString()
   };
   const payload = JSON.stringify(snapshot);
@@ -159,7 +165,8 @@ function readPendingWidgetEventsFromSnapshot() {
 function toSnapshot(
   slot: WidgetSlot,
   counters: CounterSummary[],
-  pendingEvents: WidgetPendingEvent[]
+  pendingEvents: WidgetPendingEvent[],
+  resultNotation: ResultNotation
 ): WidgetCounterSnapshot {
   const counter = slot.counterId
     ? counters.find((candidate) => candidate.id === slot.counterId)
@@ -175,6 +182,7 @@ function toSnapshot(
       losses: 0,
       total: 0,
       winRateLabel: '--%',
+      resultNotation,
       isAvailable: false,
       pendingEvents: []
     };
@@ -193,6 +201,7 @@ function toSnapshot(
     losses,
     total: wins + losses,
     winRateLabel: formatWinRate(wins, losses),
+    resultNotation,
     isAvailable: true,
     pendingEvents: slotPending
   };

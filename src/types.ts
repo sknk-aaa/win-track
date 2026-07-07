@@ -1,4 +1,5 @@
 export type MatchResult = 'win' | 'loss';
+export type ResultNotation = 'jp' | 'wl';
 
 export type Counter = {
   id: string;
@@ -49,6 +50,7 @@ export type WidgetCounterSnapshot = {
   losses: number;
   total: number;
   winRateLabel: string;
+  resultNotation: ResultNotation;
   isAvailable: boolean;
   pendingEvents: WidgetPendingEvent[];
 };

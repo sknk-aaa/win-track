@@ -5,6 +5,7 @@ import type {
   CounterSummary,
   MatchRecord,
   MatchResult,
+  ResultNotation,
   WidgetSlot,
   WidgetSlotId
 } from '../types';
@@ -35,6 +36,10 @@ type SlotRow = {
   counterId: string | null;
 };
 
+type SettingRow = {
+  value: string;
+};
+
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 const slotSeeds: WidgetSlot[] = [
@@ -42,6 +47,8 @@ const slotSeeds: WidgetSlot[] = [
   { id: 'slot2', label: '枠2', counterId: null },
   { id: 'slot3', label: '枠3', counterId: null }
 ];
+const resultNotationKey = 'resultNotation';
+const defaultResultNotation: ResultNotation = 'jp';
 
 async function getDb() {
   if (!dbPromise) {
@@ -78,6 +85,10 @@ export async function initializeStore() {
       counterId TEXT,
       FOREIGN KEY(counterId) REFERENCES counters(id) ON DELETE SET NULL
     );
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY NOT NULL,
+      value TEXT NOT NULL
+    );
   `);
 
   for (const slot of slotSeeds) {
@@ -88,6 +99,24 @@ export async function initializeStore() {
       slot.counterId
     );
   }
+}
+
+export async function getResultNotation() {
+  const db = await getDb();
+  const row = await db.getFirstAsync<SettingRow>(
+    'SELECT value FROM app_settings WHERE key = ?',
+    resultNotationKey
+  );
+  return isResultNotation(row?.value) ? row.value : defaultResultNotation;
+}
+
+export async function setResultNotation(value: ResultNotation) {
+  const db = await getDb();
+  await db.runAsync(
+    'INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)',
+    resultNotationKey,
+    value
+  );
 }
 
 export async function listCounters(options?: { includeArchived?: boolean }) {
@@ -297,4 +326,8 @@ function mapCounterRow(row: CounterRow): CounterSummary {
     losses,
     total: wins + losses
   };
+}
+
+function isResultNotation(value: unknown): value is ResultNotation {
+  return value === 'jp' || value === 'wl';
 }

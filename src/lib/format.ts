@@ -1,4 +1,4 @@
-import type { CounterSummary, MatchResult } from '../types';
+import type { CounterSummary, MatchResult, ResultNotation } from '../types';
 
 export function createId(prefix: string) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
@@ -33,8 +33,25 @@ export function formatFullDate(value: string) {
   }).format(date);
 }
 
-export function resultLabel(result: MatchResult) {
+export function resultLabel(result: MatchResult, notation: ResultNotation = 'jp') {
+  if (notation === 'wl') {
+    return result === 'win' ? 'W' : 'L';
+  }
+  return result === 'win' ? '勝' : '負';
+}
+
+export function resultLongLabel(result: MatchResult, notation: ResultNotation = 'jp') {
+  if (notation === 'wl') {
+    return result === 'win' ? 'W' : 'L';
+  }
   return result === 'win' ? '勝ち' : '負け';
+}
+
+export function formatResultCounts(wins: number, losses: number, notation: ResultNotation = 'jp') {
+  if (notation === 'wl') {
+    return `${wins}W / ${losses}L`;
+  }
+  return `${wins}勝 / ${losses}負`;
 }
 
 export function summarizeTopLine(counters: CounterSummary[]) {

@@ -22,6 +22,7 @@ struct CounterSnapshot: Codable {
   var losses: Int
   var total: Int
   var winRateLabel: String
+  var resultNotation: String?
   var isAvailable: Bool
   var pendingEvents: [PendingEvent]?
 }
@@ -215,6 +216,26 @@ struct WinRateWidgetView: View {
     SharedStore.slot(from: entry.snapshot, slotId: entry.configuration.slot.rawValue)
   }
 
+  private var usesWL: Bool {
+    slot.resultNotation == "wl"
+  }
+
+  private var winText: String {
+    usesWL ? "W" : "勝"
+  }
+
+  private var lossText: String {
+    usesWL ? "L" : "負"
+  }
+
+  private var countSummary: String {
+    usesWL ? "\(slot.wins)W / \(slot.losses)L" : "\(slot.wins)勝 / \(slot.losses)負"
+  }
+
+  private var mediumCountSummary: String {
+    "\(countSummary) / \(slot.total)戦"
+  }
+
   var body: some View {
     switch family {
     case .systemMedium:
@@ -235,13 +256,13 @@ struct WinRateWidgetView: View {
         .font(.system(size: 34, weight: .black, design: .rounded))
         .monospacedDigit()
         .minimumScaleFactor(0.75)
-      Text(slot.isAvailable ? "\(slot.wins)勝 / \(slot.losses)負" : slot.name)
+      Text(slot.isAvailable ? countSummary : slot.name)
         .font(.caption.weight(.medium))
         .foregroundStyle(.secondary)
       Spacer(minLength: 0)
       HStack(spacing: 8) {
-        recordButton(title: "勝", result: "win", color: .green)
-        recordButton(title: "負", result: "loss", color: .red)
+        recordButton(title: winText, result: "win", color: .green)
+        recordButton(title: lossText, result: "loss", color: .red)
       }
     }
     .padding(14)
@@ -258,14 +279,14 @@ struct WinRateWidgetView: View {
           .font(.system(size: 42, weight: .black, design: .rounded))
           .monospacedDigit()
           .minimumScaleFactor(0.7)
-        Text(slot.isAvailable ? "\(slot.wins)勝 / \(slot.losses)負 / \(slot.total)戦" : slot.name)
+        Text(slot.isAvailable ? mediumCountSummary : slot.name)
           .font(.caption.weight(.medium))
           .foregroundStyle(.secondary)
       }
       Spacer()
       VStack(spacing: 10) {
-        recordButton(title: "勝ち", result: "win", color: .green)
-        recordButton(title: "負け", result: "loss", color: .red)
+        recordButton(title: winText, result: "win", color: .green)
+        recordButton(title: lossText, result: "loss", color: .red)
       }
       .frame(width: 96)
     }
@@ -275,18 +296,23 @@ struct WinRateWidgetView: View {
 
   private var lockView: some View {
     HStack(spacing: 6) {
-      VStack(alignment: .leading, spacing: 1) {
+      VStack(alignment: .leading, spacing: 0) {
         Text(slot.name)
           .font(.caption2.weight(.semibold))
           .lineLimit(1)
         Text(slot.winRateLabel)
-          .font(.system(size: 19, weight: .black, design: .rounded))
+          .font(.system(size: 17, weight: .black, design: .rounded))
           .monospacedDigit()
+          .minimumScaleFactor(0.75)
+        Text(slot.isAvailable ? countSummary : slot.label)
+          .font(.system(size: 10, weight: .medium, design: .rounded))
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
           .minimumScaleFactor(0.75)
       }
       Spacer(minLength: 4)
-      recordButton(title: "勝", result: "win", color: .green)
-      recordButton(title: "負", result: "loss", color: .red)
+      recordButton(title: winText, result: "win", color: .green)
+      recordButton(title: lossText, result: "loss", color: .red)
     }
   }
 
@@ -347,6 +373,7 @@ private func defaultSlot(slotId: String) -> CounterSnapshot {
     losses: 0,
     total: 0,
     winRateLabel: "--%",
+    resultNotation: "jp",
     isAvailable: false,
     pendingEvents: []
   )

@@ -28,6 +28,7 @@ import {
   createCounter,
   deleteCounterPermanently,
   deleteRecord,
+  getResultNotation,
   initializeStore,
   listCounters,
   listHistory,
@@ -36,14 +37,17 @@ import {
   resetAllData,
   restoreCounter,
   restoreRecord,
+  setResultNotation,
   undoLastRecord,
   updateCounter
 } from './data/store';
 import {
   formatFullDate,
+  formatResultCounts,
   formatShortDate,
   formatWinRate,
   resultLabel,
+  resultLongLabel,
   summarizeTopLine
 } from './lib/format';
 import { getTheme, type AppTheme } from './theme';
@@ -57,6 +61,7 @@ import type {
   CounterSummary,
   MatchRecord,
   MatchResult,
+  ResultNotation,
   WidgetSlot,
   WidgetSlotId
 } from './types';
@@ -120,6 +125,7 @@ function Root() {
   const [selectedAppIcon, setSelectedAppIcon] = useState<AppIconSelection>('primary');
   const [isApplyingAppIcon, setIsApplyingAppIcon] = useState(false);
   const [startupError, setStartupError] = useState<string | null>(null);
+  const [resultNotation, setResultNotationState] = useState<ResultNotation>('jp');
   const didShowWidgetSyncErrorRef = useRef(false);
 
   const selectedCounter = counters.find((counter) => counter.id === detailId) ?? null;
@@ -138,16 +144,18 @@ function Root() {
         : null;
 
   const loadData = useCallback(async (filterCounterId: string | null) => {
-    const [active, all, records, widgetSlots] = await Promise.all([
+    const [active, all, records, widgetSlots, notation] = await Promise.all([
       listCounters(),
       listCounters({ includeArchived: true }),
       listHistory(filterCounterId),
-      listWidgetSlots()
+      listWidgetSlots(),
+      getResultNotation()
     ]);
     setCounters(active);
     setAllCounters(all);
     setHistory(records);
     setSlots(widgetSlots);
+    setResultNotationState(notation);
   }, []);
 
   const load = useCallback(async () => {
@@ -327,6 +335,21 @@ function Root() {
     [refreshAfterMutation]
   );
 
+  const handleChangeResultNotation = useCallback(
+    async (notation: ResultNotation) => {
+      if (notation === resultNotation) {
+        return;
+      }
+      await setResultNotation(notation);
+      setResultNotationState(notation);
+      const didSyncWidget = await publishWidgetSnapshot();
+      if (!didSyncWidget.ok) {
+        showWidgetSyncError(didSyncWidget.message);
+      }
+    },
+    [resultNotation, showWidgetSyncError]
+  );
+
   const handleDeleteHistoryRecord = useCallback(
     async (record: MatchRecord) => {
       await deleteRecord(record.id);
@@ -425,6 +448,7 @@ function Root() {
         <CountersScreen
           counters={countersByCreatedAt}
           theme={theme}
+          resultNotation={resultNotation}
           onCreate={() => setEditor({ type: 'create' })}
           onRecord={handleRecord}
           onOpen={setDetailId}
@@ -436,6 +460,7 @@ function Root() {
           history={history}
           filter={historyFilter}
           theme={theme}
+          resultNotation={resultNotation}
           onChangeFilter={setHistoryFilter}
           onDelete={(record) => void handleDeleteHistoryRecord(record)}
         />
@@ -446,6 +471,8 @@ function Root() {
           archivedCounters={archivedCounters}
           slots={slots}
           theme={theme}
+          resultNotation={resultNotation}
+          onChangeResultNotation={handleChangeResultNotation}
           onEditSlot={setSlotEditor}
           appIconOptions={appIconOptions}
           selectedAppIcon={selectedAppIcon}
@@ -495,6 +522,7 @@ function Root() {
           counter={selectedCounter}
           records={detailRecords}
           theme={theme}
+          resultNotation={resultNotation}
           onClose={() => setDetailId(null)}
           onRecord={handleRecord}
           onUndo={() => void undoLastRecord(selectedCounter.id).then(refreshAfterMutation)}
@@ -530,6 +558,7 @@ function Root() {
           counters={counters}
           selectedCounterId={slots.find((slot) => slot.id === slotEditor)?.counterId ?? null}
           theme={theme}
+          resultNotation={resultNotation}
           onCancel={() => setSlotEditor(null)}
           onSave={handleAssignSlot}
         />
@@ -541,12 +570,14 @@ function Root() {
 function CountersScreen({
   counters,
   theme,
+  resultNotation,
   onCreate,
   onRecord,
   onOpen
 }: {
   counters: CounterSummary[];
   theme: AppTheme;
+  resultNotation: ResultNotation;
   onCreate: () => void;
   onRecord: (counterId: string, result: MatchResult) => Promise<void>;
   onOpen: (counterId: string) => void;
@@ -572,6 +603,7 @@ function CountersScreen({
           key={counter.id}
           counter={counter}
           theme={theme}
+          resultNotation={resultNotation}
           onOpen={() => onOpen(counter.id)}
           onRecord={(result) => onRecord(counter.id, result)}
         />
@@ -583,11 +615,13 @@ function CountersScreen({
 function CounterCard({
   counter,
   theme,
+  resultNotation,
   onOpen,
   onRecord
 }: {
   counter: CounterSummary;
   theme: AppTheme;
+  resultNotation: ResultNotation;
   onOpen: () => void;
   onRecord: (result: MatchResult) => Promise<void>;
 }) {
@@ -611,7 +645,7 @@ function CounterCard({
             {counter.name}
           </Text>
           <Text style={[styles.counterMeta, { color: theme.colors.muted }]}>
-            {counter.total}戦 / {counter.wins}勝 {counter.losses}負
+            {counter.total}戦 / {formatResultCounts(counter.wins, counter.losses, resultNotation)}
           </Text>
         </View>
         <Text style={[styles.winRate, { color: theme.colors.text }]}>
@@ -619,8 +653,8 @@ function CounterCard({
         </Text>
       </View>
       <View style={styles.recordRow}>
-        <RecordButton result="win" theme={theme} onPress={() => onRecord('win')} />
-        <RecordButton result="loss" theme={theme} onPress={() => onRecord('loss')} />
+        <RecordButton result="win" resultNotation={resultNotation} theme={theme} onPress={() => onRecord('win')} />
+        <RecordButton result="loss" resultNotation={resultNotation} theme={theme} onPress={() => onRecord('loss')} />
       </View>
     </Pressable>
   );
@@ -631,6 +665,7 @@ function HistoryScreen({
   history,
   filter,
   theme,
+  resultNotation,
   onChangeFilter,
   onDelete
 }: {
@@ -638,6 +673,7 @@ function HistoryScreen({
   history: MatchRecord[];
   filter: string | null;
   theme: AppTheme;
+  resultNotation: ResultNotation;
   onChangeFilter: (counterId: string | null) => void;
   onDelete: (record: MatchRecord) => void;
 }) {
@@ -663,13 +699,19 @@ function HistoryScreen({
         <View style={styles.historyEmptyWrap}>
           <Text style={[styles.historyEmptyTitle, { color: theme.colors.text }]}>履歴はまだありません</Text>
           <Text style={[styles.historyEmptyText, { color: theme.colors.muted }]}>
-            勝ち/負けを記録するとここに並びます。
+            記録するとここに並びます。
           </Text>
         </View>
       ) : (
         <ScrollView style={styles.historyList} contentContainerStyle={styles.historyContent}>
           {history.map((record) => (
-            <HistoryRow key={record.id} record={record} theme={theme} onDelete={() => onDelete(record)} />
+            <HistoryRow
+              key={record.id}
+              record={record}
+              resultNotation={resultNotation}
+              theme={theme}
+              onDelete={() => onDelete(record)}
+            />
           ))}
         </ScrollView>
       )}
@@ -682,6 +724,8 @@ function SettingsScreen({
   archivedCounters,
   slots,
   theme,
+  resultNotation,
+  onChangeResultNotation,
   onEditSlot,
   appIconOptions,
   selectedAppIcon,
@@ -698,6 +742,8 @@ function SettingsScreen({
   archivedCounters: CounterSummary[];
   slots: WidgetSlot[];
   theme: AppTheme;
+  resultNotation: ResultNotation;
+  onChangeResultNotation: (notation: ResultNotation) => void;
   onEditSlot: (slotId: WidgetSlotId) => void;
   appIconOptions: AppIconOption[];
   selectedAppIcon: AppIconSelection;
@@ -712,6 +758,9 @@ function SettingsScreen({
 }) {
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
+      <SectionTitle title="表示" theme={theme} />
+      <ResultNotationControl selected={resultNotation} theme={theme} onChange={onChangeResultNotation} />
+
       <SectionTitle title="ウィジェット枠" theme={theme} />
       <Text style={[styles.note, { color: theme.colors.muted }]}>
         ロック画面ウィジェットは初期状態で枠1を表示します。
@@ -779,6 +828,7 @@ function CounterDetail({
   counter,
   records,
   theme,
+  resultNotation,
   onClose,
   onRecord,
   onUndo,
@@ -788,6 +838,7 @@ function CounterDetail({
   counter: CounterSummary;
   records: MatchRecord[];
   theme: AppTheme;
+  resultNotation: ResultNotation;
   onClose: () => void;
   onRecord: (counterId: string, result: MatchResult) => Promise<void>;
   onUndo: () => void;
@@ -805,11 +856,21 @@ function CounterDetail({
               {formatWinRate(counter.wins, counter.losses)}
             </Text>
             <Text style={[styles.counterMeta, { color: theme.colors.muted }]}>
-              {counter.total}戦 / {counter.wins}勝 {counter.losses}負
+              {counter.total}戦 / {formatResultCounts(counter.wins, counter.losses, resultNotation)}
             </Text>
             <View style={styles.recordRow}>
-              <RecordButton result="win" theme={theme} onPress={() => onRecord(counter.id, 'win')} />
-              <RecordButton result="loss" theme={theme} onPress={() => onRecord(counter.id, 'loss')} />
+              <RecordButton
+                result="win"
+                resultNotation={resultNotation}
+                theme={theme}
+                onPress={() => onRecord(counter.id, 'win')}
+              />
+              <RecordButton
+                result="loss"
+                resultNotation={resultNotation}
+                theme={theme}
+                onPress={() => onRecord(counter.id, 'loss')}
+              />
             </View>
           </View>
 
@@ -823,7 +884,15 @@ function CounterDetail({
           {records.length === 0 ? (
             <Text style={[styles.note, { color: theme.colors.muted }]}>まだ記録がありません。</Text>
           ) : (
-            records.map((record) => <HistoryRow key={record.id} record={record} theme={theme} compact />)
+            records.map((record) => (
+              <HistoryRow
+                key={record.id}
+                record={record}
+                resultNotation={resultNotation}
+                theme={theme}
+                compact
+              />
+            ))
           )}
         </ScrollView>
       </SafeAreaView>
@@ -945,6 +1014,7 @@ function SlotEditor({
   counters,
   selectedCounterId,
   theme,
+  resultNotation,
   onCancel,
   onSave
 }: {
@@ -952,6 +1022,7 @@ function SlotEditor({
   counters: CounterSummary[];
   selectedCounterId: string | null;
   theme: AppTheme;
+  resultNotation: ResultNotation;
   onCancel: () => void;
   onSave: (slotId: WidgetSlotId, counterId: string | null) => Promise<void>;
 }) {
@@ -989,7 +1060,7 @@ function SlotEditor({
               key={counter.id}
               counter={counter}
               title={counter.name}
-              meta={`${counter.total}戦 / ${formatWinRate(counter.wins, counter.losses)}`}
+              meta={`${counter.total}戦 / ${formatResultCounts(counter.wins, counter.losses, resultNotation)} / ${formatWinRate(counter.wins, counter.losses)}`}
               selected={selectedCounterId === counter.id}
               theme={theme}
               onPress={() => void onSave(slotId, counter.id)}
@@ -1180,18 +1251,21 @@ function Avatar({ counter, theme, size }: { counter: CounterSummary; theme: AppT
 
 function RecordButton({
   result,
+  resultNotation,
   theme,
   onPress
 }: {
   result: MatchResult;
+  resultNotation: ResultNotation;
   theme: AppTheme;
   onPress: (event: GestureResponderEvent) => void;
 }) {
   const isWin = result === 'win';
+  const label = resultLabel(result, resultNotation);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={isWin ? '勝ちを記録' : '負けを記録'}
+      accessibilityLabel={`${resultLongLabel(result, resultNotation)}を記録`}
       onPress={onPress}
       style={({ pressed }) => [
         styles.recordButton,
@@ -1201,18 +1275,20 @@ function RecordButton({
         }
       ]}>
       <Ionicons name={isWin ? 'checkmark' : 'close'} size={20} color="#FFFFFF" />
-      <Text style={styles.recordButtonText}>{isWin ? '勝ち' : '負け'}</Text>
+      <Text style={styles.recordButtonText}>{label}</Text>
     </Pressable>
   );
 }
 
 function HistoryRow({
   record,
+  resultNotation,
   theme,
   compact,
   onDelete
 }: {
   record: MatchRecord;
+  resultNotation: ResultNotation;
   theme: AppTheme;
   compact?: boolean;
   onDelete?: () => void;
@@ -1235,7 +1311,7 @@ function HistoryRow({
             backgroundColor: isWin ? theme.colors.win : theme.colors.loss
           }
         ]}>
-        <Text style={styles.resultPillText}>{resultLabel(record.result)}</Text>
+        <Text style={styles.resultPillText}>{resultLabel(record.result, resultNotation)}</Text>
       </View>
       <View style={styles.historyTextArea}>
         <Text style={[styles.historyName, { color: theme.colors.text }]}>{record.counterName}</Text>
@@ -1289,6 +1365,50 @@ function SettingsRow({
       </Text>
       <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />
     </Pressable>
+  );
+}
+
+function ResultNotationControl({
+  selected,
+  theme,
+  onChange
+}: {
+  selected: ResultNotation;
+  theme: AppTheme;
+  onChange: (notation: ResultNotation) => void;
+}) {
+  const options: { id: ResultNotation; title: string; sample: string }[] = [
+    { id: 'jp', title: '勝 / 負', sample: '12勝 / 7負' },
+    { id: 'wl', title: 'W / L', sample: '12W / 7L' }
+  ];
+  return (
+    <View style={styles.notationControl}>
+      {options.map((option) => {
+        const active = selected === option.id;
+        return (
+          <Pressable
+            key={option.id}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            onPress={() => onChange(option.id)}
+            style={({ pressed }) => [
+              styles.notationOption,
+              {
+                backgroundColor: active ? theme.colors.text : theme.colors.surface,
+                borderColor: active ? theme.colors.text : theme.colors.border,
+                opacity: pressed ? 0.82 : 1
+              }
+            ]}>
+            <Text style={[styles.notationTitle, { color: active ? theme.colors.background : theme.colors.text }]}>
+              {option.title}
+            </Text>
+            <Text style={[styles.notationSample, { color: active ? theme.colors.background : theme.colors.muted }]}>
+              {option.sample}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
@@ -1765,6 +1885,30 @@ const styles = StyleSheet.create({
     maxWidth: 128,
     fontSize: 13,
     fontWeight: '700'
+  },
+  notationControl: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  notationOption: {
+    flex: 1,
+    minHeight: 64,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    justifyContent: 'center',
+    gap: 4
+  },
+  notationTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    textAlign: 'center'
+  },
+  notationSample: {
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center'
   },
   slotSummary: {
     borderWidth: StyleSheet.hairlineWidth,
