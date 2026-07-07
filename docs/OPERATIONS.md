@@ -51,5 +51,7 @@ GitHub Actions Secrets:
 - `iOS TestFlight` laneはIPA内の本体/Widgetそれぞれの署名済みentitlementsとembedded provisioning profileに `group.com.sknkaaa.wintrack` が入っていることを検査する。
 - 白画面対策後の確認では、最新コミットをpushして `iOS TestFlight` を再実行する。
 - 2026-07-06の `iOS TestFlight` workflow run `28781717615` は成功済み。
+- 2026-07-07の `iOS TestFlight` workflow run `28843434820` は成功済み。対象コミットは `01ccbb6`。
+- Widget由来の記録反映は、Widgetで勝ち/負けを押した後にアプリを前面復帰させ、カウンター数値と履歴の両方に追加されるか確認する。
 - `npx expo-doctor` はネットワーク起因のExpo API / React Native Directory接続失敗を除き、依存・設定エラーがない状態にする。
 - 再度白画面が出る場合は、依存推測ではなくGitHub ActionsログとTestFlight/端末クラッシュログを確認する。

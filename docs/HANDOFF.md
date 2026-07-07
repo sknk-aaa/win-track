@@ -9,7 +9,8 @@
 - TestFlight起動時の白画面対策として、`expo-font@14.0.12` を明示依存に追加し、`@expo/vector-icons` のNative Module/Font依存重複を解消済み。
 - 型チェック、SDK依存チェック、iOS export、clean prebuild、autolinking、npm auditを確認済み。
 - GitHub Actions / fastlane matchによるTestFlight配信設定を追加。
-- 2026-07-06 18:29 JST頃に `iOS TestFlight` workflowを手動実行し、run `28781717615` は成功。
+- 2026-07-07 14:18 JST頃に `iOS TestFlight` workflowを手動実行し、run `28843434820` は成功。対象コミットは `01ccbb6`。
+- 実機でWidget表示までは確認済み。Widgetから押した勝ち/負けがアプリのカウンター数値と履歴に取り込まれない問題に対して、`widget-events.json` に加えてスナップショット内 `pendingEvents` も取り込む修正を追加済み。
 - アプリ名は「勝率カウンター」。
 - 海外向け展開は後回し。
 
@@ -40,15 +41,15 @@
 
 ## 次タスク
 
-1. TestFlightビルドを実機で確認する。
-2. 枠1にカウンターを割り当て、ホーム画面/ロック画面ウィジェットが「カウンターなし」ではなく対象カウンターを表示するか確認する。
-3. ウィジェットから勝ち/負けを記録し、Widget表示とアプリ履歴へ反映されるか確認する。
-4. 設定画面のアプリアイコン選択UI、履歴画面の上揃え、作成導線を実機で再確認する。
-5. 問題がなければストアスクリーンショットを作成する。
+1. TestFlight run `28843434820` のビルドを実機に入れ、Widgetから勝ち/負けを押した後、アプリを前面に戻してカウンター数値と履歴へ反映されるか確認する。
+2. 反映確認後、ホーム画面/ロック画面Widgetの表示更新速度と、Widget連打時の重複記録がないことを確認する。
+3. 設定画面のアプリアイコン選択UI、履歴画面の上揃え、作成導線を実機で再確認する。
+4. 問題がなければストアスクリーンショットを作成する。
 
 ## 既知の注意点
 
 - ウィジェットからの記録は、共有ストレージ更新とWidgetKit再読み込みの体感速度が品質を左右する。
+- Widget由来イベントは `widget-events.json` とスナップショット内 `pendingEvents` の両方から取り込み、イベントIDを `match_records.id` にして `INSERT OR IGNORE` するため二重加算を防ぐ。
 - 「ウィジェット同期に失敗しました / App Groupの設定を確認してください」が出た場合、App Group共有コンテナを実機で開けていない。Apple Developerの本体App ID/Widget App ID両方にApp Groups capabilityと `group.com.sknkaaa.wintrack` を付け、`iOS Certificates (one-time setup)` でmatch profileを強制再生成してからTestFlightを再実行する。
 - `iOS TestFlight` は署名済みentitlementsとembedded provisioning profileの両方にApp Groupが含まれるか検査する。
 - レイアウト寸法は実装後に実機確認で調整する。
