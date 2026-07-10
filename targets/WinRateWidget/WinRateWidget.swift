@@ -295,7 +295,7 @@ struct WinRateWidgetView: View {
   }
 
   private var lockView: some View {
-    HStack(spacing: 6) {
+    HStack(spacing: 5) {
       VStack(alignment: .leading, spacing: 0) {
         Text(slot.name)
           .font(.caption2.weight(.semibold))
@@ -314,9 +314,9 @@ struct WinRateWidgetView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       .layoutPriority(1)
       recordButton(title: winText, result: "win", color: .green)
-        .frame(width: 30)
+        .frame(width: 36, height: 30)
       recordButton(title: lossText, result: "loss", color: .red)
-        .frame(width: 30)
+        .frame(width: 36, height: 30)
     }
   }
 
