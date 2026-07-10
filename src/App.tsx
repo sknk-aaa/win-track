@@ -758,9 +758,12 @@ function SettingsScreen({
 }) {
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
-      <SectionTitle title="ウィジェット枠" theme={theme} />
+      <SectionTitle icon="apps" title="ウィジェット枠" theme={theme} />
       <Text style={[styles.note, { color: theme.colors.muted }]}>
-        ロック画面ウィジェットは初期状態で枠1を表示します。ホーム画面には、ウィジェットを3種類まで置くことが可能です。
+        ホーム画面には、ウィジェットを3種類まで置くことが可能です
+        <Text style={[styles.noteSubtle, { color: theme.colors.muted }]}>
+          （ロック画面ウィジェットは初期状態で枠1を表示します）
+        </Text>
       </Text>
       {slotIds.map((slotId) => {
         const slot = slots.find((candidate) => candidate.id === slotId);
@@ -777,7 +780,7 @@ function SettingsScreen({
         );
       })}
 
-      <SectionTitle title="アーカイブ" theme={theme} />
+      <SectionTitle icon="archive-outline" title="アーカイブ" theme={theme} />
       {archivedCounters.length === 0 ? (
         <Text style={[styles.note, { color: theme.colors.muted }]}>アーカイブ済みカウンターはありません。</Text>
       ) : (
@@ -791,14 +794,18 @@ function SettingsScreen({
           </View>
         ))
       )}
+      <SettingsRow
+        icon="heart"
+        title="レビューして応援"
+        value=""
+        theme={theme}
+        onPress={onRequestReview}
+      />
 
-      <SectionTitle title="データ" theme={theme} />
-      <DangerButton label="すべてのデータを削除" theme={theme} onPress={onResetAll} />
-
-      <SectionTitle title="表示" theme={theme} />
+      <SectionTitle icon="options-outline" title="表示" theme={theme} />
       <ResultNotationControl selected={resultNotation} theme={theme} onChange={onChangeResultNotation} />
 
-      <SectionTitle title="アプリアイコン" theme={theme} />
+      <SectionTitle icon="color-palette-outline" title="アプリアイコン" theme={theme} />
       <AppIconPicker
         options={appIconOptions}
         selected={selectedAppIcon}
@@ -809,17 +816,13 @@ function SettingsScreen({
         onApply={onApplyAppIcon}
       />
 
-      <SectionTitle title="アプリ情報" theme={theme} />
-      <SettingsRow
-        icon="heart"
-        title="レビューして応援"
-        value=""
-        theme={theme}
-        onPress={onRequestReview}
-      />
+      <SectionTitle icon="information-circle-outline" title="アプリ情報" theme={theme} />
       <Text style={[styles.note, { color: theme.colors.muted }]}>
         勝率カウンター 1.0.0 / データはこの端末内だけに保存されます。
       </Text>
+
+      <SectionTitle icon="trash-outline" title="データ" theme={theme} />
+      <DangerButton label="すべてのデータを削除" theme={theme} onPress={onResetAll} />
     </ScrollView>
   );
 }
@@ -1412,8 +1415,17 @@ function ResultNotationControl({
   );
 }
 
-function SectionTitle({ title, theme }: { title: string; theme: AppTheme }) {
-  return <Text style={[styles.sectionTitle, { color: theme.colors.muted }]}>{title}</Text>;
+function SectionTitle({ icon, title, theme }: { icon?: IconName; title: string; theme: AppTheme }) {
+  return (
+    <View style={styles.sectionTitleRow}>
+      {icon ? (
+        <View style={[styles.sectionTitleIcon, { backgroundColor: theme.colors.surfaceSubtle }]}>
+          <Ionicons name={icon} size={14} color={theme.colors.accent} />
+        </View>
+      ) : null}
+      <Text style={[styles.sectionTitle, { color: theme.colors.muted }]}>{title}</Text>
+    </View>
+  );
 }
 
 function ModalHeader({
@@ -2026,10 +2038,23 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '900'
   },
-  sectionTitle: {
+  sectionTitleRow: {
     marginTop: 8,
     marginBottom: 2,
     paddingHorizontal: 4,
+    minHeight: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7
+  },
+  sectionTitleIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  sectionTitle: {
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0
@@ -2039,6 +2064,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     fontWeight: '600'
+  },
+  noteSubtle: {
+    fontSize: 13,
+    fontWeight: '600',
+    opacity: 0.72
   },
   archiveRow: {
     borderBottomWidth: StyleSheet.hairlineWidth,

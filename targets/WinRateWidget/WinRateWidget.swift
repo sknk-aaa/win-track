@@ -295,7 +295,7 @@ struct WinRateWidgetView: View {
   }
 
   private var lockView: some View {
-    HStack(spacing: 5) {
+    HStack(spacing: 6) {
       VStack(alignment: .leading, spacing: 0) {
         Text(slot.name)
           .font(.caption2.weight(.semibold))
@@ -313,11 +313,21 @@ struct WinRateWidgetView: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       .layoutPriority(1)
-      recordButton(title: winText, result: "win", color: .green)
-        .frame(width: 36, height: 30)
-      recordButton(title: lossText, result: "loss", color: .red)
-        .frame(width: 36, height: 30)
+      lockRecordButton(title: winText, result: "win", color: .green)
+      lockRecordButton(title: lossText, result: "loss", color: .red)
     }
+  }
+
+  private func lockRecordButton(title: String, result: String, color: Color) -> some View {
+    Button(intent: RecordMatchIntent(slotId: slot.slotId, result: result)) {
+      Text(title)
+        .font(.caption.weight(.bold))
+        .foregroundStyle(.white)
+        .frame(width: 36, height: 36)
+        .background(Circle().fill(slot.isAvailable ? color : .gray))
+    }
+    .buttonStyle(.plain)
+    .disabled(!slot.isAvailable)
   }
 
   private func recordButton(title: String, result: String, color: Color) -> some View {
