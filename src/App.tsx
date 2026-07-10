@@ -758,12 +758,9 @@ function SettingsScreen({
 }) {
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
-      <SectionTitle title="表示" theme={theme} />
-      <ResultNotationControl selected={resultNotation} theme={theme} onChange={onChangeResultNotation} />
-
       <SectionTitle title="ウィジェット枠" theme={theme} />
       <Text style={[styles.note, { color: theme.colors.muted }]}>
-        ロック画面ウィジェットは初期状態で枠1を表示します。
+        ロック画面ウィジェットは初期状態で枠1を表示します。ホーム画面には、ウィジェットを3種類まで置くことが可能です。
       </Text>
       {slotIds.map((slotId) => {
         const slot = slots.find((candidate) => candidate.id === slotId);
@@ -797,6 +794,9 @@ function SettingsScreen({
 
       <SectionTitle title="データ" theme={theme} />
       <DangerButton label="すべてのデータを削除" theme={theme} onPress={onResetAll} />
+
+      <SectionTitle title="表示" theme={theme} />
+      <ResultNotationControl selected={resultNotation} theme={theme} onChange={onChangeResultNotation} />
 
       <SectionTitle title="アプリアイコン" theme={theme} />
       <AppIconPicker

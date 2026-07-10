@@ -303,6 +303,7 @@ struct WinRateWidgetView: View {
         Text(slot.winRateLabel)
           .font(.system(size: 17, weight: .black, design: .rounded))
           .monospacedDigit()
+          .lineLimit(1)
           .minimumScaleFactor(0.75)
         Text(slot.isAvailable ? countSummary : slot.label)
           .font(.system(size: 10, weight: .medium, design: .rounded))
@@ -310,9 +311,12 @@ struct WinRateWidgetView: View {
           .lineLimit(1)
           .minimumScaleFactor(0.75)
       }
-      Spacer(minLength: 4)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .layoutPriority(1)
       recordButton(title: winText, result: "win", color: .green)
+        .frame(width: 30)
       recordButton(title: lossText, result: "loss", color: .red)
+        .frame(width: 30)
     }
   }
 
