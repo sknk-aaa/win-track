@@ -45,6 +45,27 @@ GitHub Actions Secrets:
 
 詳細な汎用手順は親プロジェクトのiOS CI/CD手順を参照する。
 
+## GitHub Pages
+
+App Store Connect用のサポートURLとプライバシーポリシーURLはGitHub Pagesで公開する。
+
+GitHub Pages設定:
+
+1. GitHubリポジトリの Settings > Pages を開く。
+2. Sourceを `Deploy from a branch` にする。
+3. Branchを `main`、Folderを `/docs` にする。
+4. 保存後、以下のURLが公開されることを確認する。
+
+サポートURL:
+```text
+https://sknk-aaa.github.io/win-track/support/
+```
+
+プライバシーポリシーURL:
+```text
+https://sknk-aaa.github.io/win-track/privacy/
+```
+
 ## TestFlight確認
 
 - アプリ内で「ウィジェット同期に失敗しました / App Groupの設定を確認してください」と出た場合、実機ビルドがApp Group共有コンテナを開けていない。Apple Developerで本体App IDとWidget App IDの両方にApp Groups capabilityと `group.com.sknkaaa.wintrack` が入っていることを確認し、`iOS Certificates (one-time setup)` でprofileを再生成してから `iOS TestFlight` を実行する。

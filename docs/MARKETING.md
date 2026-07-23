@@ -115,6 +115,20 @@ App Store名: 勝率カウンター - 戦績管理
 - App Store Connectの説明文、キーワード、サポートURL/マーケティングURL。
 - 最終アイコンは `assets/icon1.png` をプライマリアイコンとして使う。
 
+## App Store URL
+
+サポートURL:
+```text
+https://sknk-aaa.github.io/win-track/support/
+```
+
+プライバシーポリシーURL:
+```text
+https://sknk-aaa.github.io/win-track/privacy/
+```
+
+GitHub Pagesは、GitHubリポジトリのSettings > Pagesで、Sourceを `Deploy from a branch`、Branchを `main`、Folderを `/docs` にする。
+
 ## 後回し
 
 - 海外向けローカライズ。
