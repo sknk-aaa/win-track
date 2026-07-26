@@ -1,4 +1,9 @@
 module.exports = () => {
+  const cameraPermission =
+    'カウンターに表示する写真を撮影するためにカメラを使用します。例えば、デッキやチームを識別する画像をその場で撮影して登録できます。';
+  const photosPermission =
+    'カウンターに表示する写真を選択するために写真ライブラリを使用します。例えば、デッキやチームを識別する画像を選んで登録できます。';
+
   return {
     name: '勝率カウンター',
     slug: 'win-track',
@@ -17,16 +22,17 @@ module.exports = () => {
         'com.apple.security.application-groups': ['group.com.sknkaaa.wintrack']
       },
       infoPlist: {
-        NSCameraUsageDescription: 'カウンター写真を撮影するためにカメラを使用します。',
-        NSPhotoLibraryUsageDescription: 'カウンター写真を選択するために写真ライブラリを使用します。'
+        NSCameraUsageDescription: cameraPermission,
+        NSPhotoLibraryUsageDescription: photosPermission
       }
     },
     plugins: [
       [
         'expo-image-picker',
         {
-          photosPermission: 'カウンター写真を選択するために写真ライブラリを使用します。',
-          cameraPermission: 'カウンター写真を撮影するためにカメラを使用します。'
+          photosPermission,
+          cameraPermission,
+          microphonePermission: false
         }
       ],
       'expo-font',

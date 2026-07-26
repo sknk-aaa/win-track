@@ -70,6 +70,7 @@ https://sknk-aaa.github.io/win-track/privacy/
 
 - アプリ内で「ウィジェット同期に失敗しました / App Groupの設定を確認してください」と出た場合、実機ビルドがApp Group共有コンテナを開けていない。Apple Developerで本体App IDとWidget App IDの両方にApp Groups capabilityと `group.com.sknkaaa.wintrack` が入っていることを確認し、`iOS Certificates (one-time setup)` でprofileを再生成してから `iOS TestFlight` を実行する。
 - `iOS TestFlight` laneはIPA内の本体/Widgetそれぞれの署名済みentitlementsとembedded provisioning profileに `group.com.sknkaaa.wintrack` が入っていることを検査する。
+- Camera/Photo Libraryのpurpose stringは、カウンター写真への使用目的と具体例を含める。未使用のMicrophone権限は `expo-image-picker` plugin設定で `microphonePermission: false` にし、Info.plistへ含めない。
 - 白画面対策後の確認では、最新コミットをpushして `iOS TestFlight` を再実行する。
 - 2026-07-06の `iOS TestFlight` workflow run `28781717615` は成功済み。
 - 2026-07-07の `iOS TestFlight` workflow run `28843434820` は成功済み。対象コミットは `01ccbb6`。

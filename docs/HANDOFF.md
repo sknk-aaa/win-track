@@ -19,6 +19,7 @@
 - 設定画面のセクションタイトルに、アプリの雰囲気に合わせた小さなアイコンを追加。
 - プライマリアプリアイコンは `app.config.js` で `assets/icon1.png` を使用。
 - アプリ本体の最新commit `7b11469` は `origin/main` へpush済みで、TestFlightビルドも成功済み。
+- App Reviewで権限purpose string不足の自動却下が発生。Camera/Photo Libraryの用途文言を具体例付きに修正し、未使用のMicrophone権限文言は `expo-image-picker` configで追加しないようにした。
 - アプリ名は「勝率カウンター」。
 - 海外向け展開は後回し。
 
@@ -50,12 +51,9 @@
 
 ## 次タスク
 
-1. TestFlight run `29087332937` のビルドを実機に入れ、ロック画面Widgetの `50.0%` などの勝率が一行で表示されるか確認する。
-2. ロック画面WidgetのW/Lボタンが円形で押しにくくないか確認する。
-3. 設定画面で、レビュー導線/勝敗表記/アプリアイコン/データ削除の順序が自然か確認する。
-4. ウィジェット枠説明が、ホーム画面の3種類設置とロック画面の枠1を理解しやすいか確認する。
-5. Widgetから勝ち/負けを押した後、アプリのカウンター数値と履歴へ反映されるか継続確認する。
-6. 問題がなければストアスクリーンショット、説明文、キーワードを用意してApp Store Connectへ提出する。
+1. purpose string修正版をTestFlight/App Store Connectへアップロードし、同じ申請に新しいビルドを選び直して再提出する。
+2. 提出前に、処理済みビルドのInfo.plistで `NSMicrophoneUsageDescription` が含まれず、Camera/Photo Libraryの文言が具体例付きになっていることを確認する。
+3. 再提出後、審査ステータスと追加のApp Reviewメッセージを確認する。
 
 ## 既知の注意点
 
