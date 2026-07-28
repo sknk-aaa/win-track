@@ -22,6 +22,8 @@ module.exports = () => {
         'com.apple.security.application-groups': ['group.com.sknkaaa.wintrack']
       },
       infoPlist: {
+        CFBundleDevelopmentRegion: 'ja',
+        CFBundleLocalizations: ['ja'],
         NSCameraUsageDescription: cameraPermission,
         NSPhotoLibraryUsageDescription: photosPermission
       }
@@ -37,7 +39,8 @@ module.exports = () => {
       ],
       'expo-font',
       './plugins/withAlternateAppIcons',
-      '@bacons/apple-targets'
+      '@bacons/apple-targets',
+      './plugins/withJapaneseLocalization'
     ]
   };
 };
