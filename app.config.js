@@ -7,7 +7,7 @@ module.exports = () => {
   return {
     name: '勝率カウンター',
     slug: 'win-track',
-    version: '1.0.0',
+    version: '1.0.1',
     icon: './assets/icon1.png',
     platforms: ['ios'],
     orientation: 'portrait',

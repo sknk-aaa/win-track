@@ -29,6 +29,26 @@ platform :ios do
     File.expand_path("..", __dir__)
   end
 
+  def app_version
+    require "json"
+    JSON.parse(File.read(File.join(project_root, "package.json")))["version"]
+  end
+
+  def sync_project_versions(project_path, target_names, version_no, build_no)
+    require "xcodeproj"
+
+    project = Xcodeproj::Project.open(project_path)
+    project.targets.each do |target|
+      next unless target_names.include?(target.name)
+
+      target.build_configurations.each do |configuration|
+        configuration.build_settings["MARKETING_VERSION"] = version_no
+        configuration.build_settings["CURRENT_PROJECT_VERSION"] = build_no
+      end
+    end
+    project.save
+  end
+
   def detect_workspace
     Dir[File.join(project_root, "ios", "*.xcworkspace")].first or
       UI.user_error!("ios/*.xcworkspace が見つかりません。先に expo prebuild + pod install を実行")
@@ -75,6 +95,7 @@ platform :ios do
     workspace = detect_workspace
     scheme = File.basename(workspace, ".xcworkspace")
     project = File.join(project_root, "ios", "#{scheme}.xcodeproj")
+    version_no = app_version
     build_no = ENV["GITHUB_RUN_NUMBER"] || Time.now.to_i.to_s
     app_profile = profile_name(app_id)
     widget_profile = profile_name(widget_id)
@@ -98,11 +119,17 @@ platform :ios do
       targets: [WIDGET_TARGET]
     )
 
+    sync_project_versions(project, [scheme, WIDGET_TARGET], version_no, build_no)
+
     [
       File.join(project_root, "ios", scheme, "Info.plist"),
+      File.join(project_root, "ios", WIDGET_TARGET, "Info.plist"),
       File.join(project_root, "targets", WIDGET_TARGET, "Info.plist")
     ].uniq.each do |plist|
-      set_info_plist_value(path: plist, key: "CFBundleVersion", value: build_no) if File.exist?(plist)
+      next unless File.exist?(plist)
+
+      set_info_plist_value(path: plist, key: "CFBundleShortVersionString", value: version_no)
+      set_info_plist_value(path: plist, key: "CFBundleVersion", value: build_no)
     end
 
     gym(

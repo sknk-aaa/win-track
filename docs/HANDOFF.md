@@ -52,7 +52,7 @@
 
 ## 次タスク
 
-1. purpose string修正版をTestFlight/App Store Connectへアップロードし、同じ申請に新しいビルドを選び直して再提出する。
+1. `1.0.1` の再提出用ビルドをTestFlight/App Store Connectへアップロードし、同じ申請に新しいビルドを選び直して再提出する。
 2. 提出前に、処理済みビルドのInfo.plistで `NSMicrophoneUsageDescription` が含まれず、Camera/Photo Libraryの文言が具体例付き、言語が `ja` になっていることを確認する。
 3. 再提出後、審査ステータスと追加のApp Reviewメッセージを確認する。
 
